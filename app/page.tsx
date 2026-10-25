@@ -73,10 +73,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <div className="lp-hero-copy">
               <span className="lp-eyebrow">Classes 6 to 10 · Saket Nagar, Varanasi</span>
               <h1><span>Discover.</span><span>Learn.</span><span className="hl">Excel.</span></h1>
-              <p className="lp-lead">
-                Acads is a coaching institute where every class is recorded and every student is followed up. Parents see attendance,
-                homework and test results on their phone, and students always know what to revise next.
-              </p>
               <div className="lp-cta">
                 <a href="#admissions" className="lp-btn sun">Book a demo class</a>
                 <Link href={login.href} className="lp-btn alt">{session ? "Go to my dashboard" : "Student and parent login"}</Link>
