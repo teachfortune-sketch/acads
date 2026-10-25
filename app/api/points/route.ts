@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   if (!s || s.mustChange || !STAFF.includes(s.role)) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   const body = await req.json().catch(() => null);
   const actions: Action[] = Array.isArray(body?.actions) ? body.actions.slice(0, 200) : [];
-  const results: { id: string; ok: boolean; error?: string }[] = [];
+  const results: { id: string; ok: boolean; error?: string; retry?: boolean }[] = [];
   for (const a of actions) {
     if (typeof a?.id !== "string" || !a.id || a.id.length > 64) continue;
     if (!ALLOWED[a.type]?.includes(s.role)) { results.push({ id: a.id, ok: false, error: "Your role can't do that." }); continue; }
@@ -68,8 +68,11 @@ export async function POST(req: Request) {
       });
       results.push({ id: a.id, ok: true });
     } catch (e) {
-      if (!(e instanceof PointsError)) console.error(e);
-      results.push({ id: a.id, ok: false, error: e instanceof PointsError ? e.message : "That didn't save. Try again." });
+      if (e instanceof PointsError) results.push({ id: a.id, ok: false, error: e.message });
+      else {
+        console.error(e);
+        results.push({ id: a.id, ok: false, retry: true });
+      }
     }
   }
   revalidatePath("/", "layout");

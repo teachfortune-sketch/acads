@@ -121,11 +121,12 @@ const standing = (db: Db) => db`reversed_by_id is null and reverses_id is null`;
 export async function undoPoint(db: Db, id: number, actor: Actor, note: string) {
   const [p] = await db`select staff_id, pillar, created_at from points where id = ${id}`;
   if (!p) throw new PointsError("That entry no longer exists.");
-  if (actor.role !== "admin") {
+  // Without a note an admin gets the same quick undo as everyone else; with one they can reverse anything.
+  if (actor.role !== "admin" || !note) {
     const fresh = Date.now() - new Date(p.created_at).getTime() < 10 * 60 * 1000;
     if (p.staff_id !== actor.uid || !fresh || !["presence", "discipline", "selfstudy"].includes(p.pillar))
       throw new PointsError("You can undo only your own entries, within 10 minutes. Ask an admin to reverse older ones.");
-  } else if (!note) throw new PointsError("Write why you are reversing this entry.");
+  }
   if (!(await reverseRow(db, id, actor.uid, note || "Undone within 10 minutes")))
     throw new PointsError("That entry was already reversed.");
 }
@@ -297,7 +298,17 @@ export function nextStep(n: number) {
   return STREAK_STEPS.find((s) => s > n) ?? null;
 }
 
+// A change on one day can make or break the streak on every later day, so those days are settled again too.
 async function settleStreak(db: Db, student: number, kind: "attendance" | "homework", day: string, staff: number, rules: Rules) {
+  const later = kind === "attendance"
+    ? await db`select distinct day::text as d from day_attendance where batch_id = (select batch_id from students where user_id = ${student}) and day >= ${day} order by 1 limit 60`
+    : await db`select distinct q.due_on::text as d from quests q where q.batch_id = (select batch_id from students where user_id = ${student}) and q.due_on >= ${day}
+        and exists (select 1 from quest_checks x where x.quest_id = q.id) order by 1 limit 60`;
+  const days = new Set([day, ...later.map((r) => r.d as string)]);
+  for (const d of days) await settleStreakOn(db, student, kind, d, staff, rules);
+}
+
+async function settleStreakOn(db: Db, student: number, kind: "attendance" | "homework", day: string, staff: number, rules: Rules) {
   const n = kind === "attendance" ? await attendanceStreak(db, student, day) : await homeworkStreak(db, student, day);
   for (const step of STREAK_STEPS) {
     const action = `streak_${kind}_${step}`;

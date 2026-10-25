@@ -15,7 +15,7 @@ const STATUS_LABEL = { present: "Present", late: "Late", absent: "Absent", excus
 const STATUS_CHIP = { present: "c-good", late: "c-warn", absent: "c-bad", excused: "c-info" } as const;
 
 export function ClassMode(props: {
-  day: string; tiles: Tile[]; quest: { id: number; label: string } | null; isAdmin: boolean; recent: Recent[];
+  owner: number; day: string; tiles: Tile[]; quest: { id: number; label: string } | null; isAdmin: boolean; recent: Recent[];
   values: { plus: number; minus: number; hwBonusMax: number; disc: Record<string, number>; otherMax: number };
 }) {
   const [mode, setMode] = useState<Mode>("attendance");
@@ -23,7 +23,7 @@ export function ClassMode(props: {
   const [toast, setToast] = useState<string | null>(null);
   const [local, setLocal] = useState<Record<number, Partial<Tile>>>({});
   const showError = useCallback((m: string) => setToast(m), []);
-  const { send, pending, offline } = useActionQueue(showError);
+  const { send, pending, offline } = useActionQueue(props.owner, showError);
 
   // Fresh data from the server replaces what we showed optimistically, once nothing is waiting to be sent.
   const waiting = useRef(pending);

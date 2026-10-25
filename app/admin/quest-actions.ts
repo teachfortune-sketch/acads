@@ -77,6 +77,7 @@ export async function saveRules(fd: FormData) {
 export async function reversePoint(fd: FormData) {
   const s = await requireRole("admin");
   const studentId = int(fd, "student_id");
+  if (!str(fd, "note")) redirect(withMsg(`/students/${studentId}`, "err", "Write why you are reversing this entry.") + "#points");
   try {
     await sql.begin((tx) => undoPoint(tx, int(fd, "id") ?? 0, s, str(fd, "note")));
   } catch (e) {

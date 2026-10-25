@@ -5,7 +5,7 @@ import { SyncPill, useActionQueue } from "./useActionQueue";
 export type DeskStudent = { id: number; name: string; batch: string; section: string; roll: string; late: string | null };
 const REASONS = [["uniform", "Uniform"], ["phone", "Phone found"], ["misbehaviour", "Misbehaviour"], ["disruption", "Disruption"]] as const;
 
-export function Desk({ students, values }: { students: DeskStudent[]; values: { disc: Record<string, number>; otherMax: number } }) {
+export function Desk({ owner, students, values }: { owner: number; students: DeskStudent[]; values: { disc: Record<string, number>; otherMax: number } }) {
   const [q, setQ] = useState("");
   const [pick, setPick] = useState<DeskStudent | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -14,7 +14,7 @@ export function Desk({ students, values }: { students: DeskStudent[]; values: { 
   const [note, setNote] = useState("");
   const [lateNow, setLateNow] = useState<Record<number, string>>({});
   const input = useRef<HTMLInputElement>(null);
-  const { send, pending, offline } = useActionQueue(useCallback((m: string) => setToast(m), []));
+  const { send, pending, offline } = useActionQueue(owner, useCallback((m: string) => setToast(m), []));
 
   useEffect(() => {
     if (!toast) return;
@@ -111,9 +111,9 @@ export function Desk({ students, values }: { students: DeskStudent[]; values: { 
 }
 
 // Undo for the late list and today's discipline list (own entries, 10 minutes).
-export function DeskUndo({ action, label }: { action: { type: "unlate"; student: number } | { type: "undo"; point: number }; label: string }) {
+export function DeskUndo({ owner, action, label }: { owner: number; action: { type: "unlate"; student: number } | { type: "undo"; point: number }; label: string }) {
   const [gone, setGone] = useState(false);
-  const { send } = useActionQueue(useCallback(() => {}, []));
+  const { send } = useActionQueue(owner, useCallback(() => {}, []));
   if (gone) return <span className="muted small">Undoing…</span>;
   return <button type="button" className="small" onClick={() => { send(action); setGone(true); }}>{label}</button>;
 }

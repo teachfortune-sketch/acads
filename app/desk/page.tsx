@@ -30,7 +30,7 @@ export default async function DeskPage() {
   return (
     <Shell s={s} active="/desk">
       <div><h1>Reception desk</h1><p className="muted">Find the student, then one tap for Late or a discipline reason. The time is saved automatically.</p></div>
-      <Desk students={students.map((x) => ({ id: x.id, name: x.name, batch: x.batch, section: x.section, roll: x.roll, late: x.late }))}
+      <Desk owner={s.uid} students={students.map((x) => ({ id: x.id, name: x.name, batch: x.batch, section: x.section, roll: x.roll, late: x.late }))}
         values={{ otherMax: Number(rules.disc_other_max), disc: { uniform: Number(rules.disc_uniform), phone: Number(rules.disc_phone), disruption: Number(rules.disc_disruption), misbehaviour: Number(rules.disc_misbehaviour) } }} />
       <div className="grid">
         <div className="panel">
@@ -44,7 +44,7 @@ export default async function DeskPage() {
                     <div className="small"><span className="num">{r.arrived_at || "–"}</span> · by {r.marked_by}
                       {r.month_count > 1 && <> · <span className={`chip ${r.month_count >= 3 ? "c-bad" : "c-warn"}`}>{r.month_count}× this month</span></>}</div>
                   </div>
-                  {r.fresh && (s.role === "admin" || r.marked_by_id === s.uid) && <DeskUndo action={{ type: "unlate", student: r.student_id }} label="Undo" />}
+                  {r.fresh && (s.role === "admin" || r.marked_by_id === s.uid) && <DeskUndo owner={s.uid} action={{ type: "unlate", student: r.student_id }} label="Undo" />}
                 </li>
               ))}
             </ul>
@@ -60,7 +60,7 @@ export default async function DeskPage() {
                     <b>{r.name}</b> · {r.reason} <span className="num">{r.xp}</span>
                     <div className="muted small">{r.staff}{r.note ? ` · “${r.note}”` : ""}</div>
                   </div>
-                  {r.fresh && r.staff_id === s.uid && <DeskUndo action={{ type: "undo", point: r.id }} label="Undo" />}
+                  {r.fresh && r.staff_id === s.uid && <DeskUndo owner={s.uid} action={{ type: "undo", point: r.id }} label="Undo" />}
                 </li>
               ))}
             </ul>

@@ -55,7 +55,7 @@ export default async function ClassModePage({ params, searchParams }: { params: 
         <p className="muted">{fmtDate(l.day)} · {l.topic}</p>
       </div>
       <Flash sp={sp} />
-      <ClassMode day={l.day} tiles={tiles} isAdmin={s.role === "admin"} quest={quest ? { id: quest.id, label: questLabel(quest) || quest.note } : null}
+      <ClassMode owner={s.uid} day={l.day} tiles={tiles} isAdmin={s.role === "admin"} quest={quest ? { id: quest.id, label: questLabel(quest) || quest.note } : null}
         recent={recent.map((r) => ({ id: r.id, student: r.student, reason: r.reason, xp: r.xp }))}
         values={{
           plus: Number(rules.presence_plus), minus: Number(rules.presence_minus), hwBonusMax: Number(rules.hw_bonus_max), otherMax: Number(rules.disc_other_max),
