@@ -341,46 +341,55 @@ export async function settleCleanWeeks() {
   const thisMonday = mondayOf(todayIST());
   const [state] = await sql`select value from app_state where key = 'clean_weeks_through'`;
   if (state?.value >= thisMonday) return;
-  await sql.begin(async (tx) => {
-    await tx`select pg_advisory_xact_lock(73311)`;
-    const [st] = await tx`select value from app_state where key = 'clean_weeks_through'`;
-    const [first] = await tx`select min(day)::text as d from points`;
-    if (!first?.d) {
-      await tx`insert into app_state values ('clean_weeks_through', ${thisMonday}) on conflict (key) do update set value = excluded.value`;
-      return;
-    }
-    // Weeks are settled when the week after them has finished: [prev, week) had deductions, [week, next) had none.
-    let week = st?.value ? st.value as string : addDays(mondayOf(first.d), 7);
-    while (addDays(week, 7) <= thisMonday) {
-      const prev = addDays(week, -7), next = addDays(week, 7);
-      await tx`
-        insert into points (student_id, pillar, action, xp, reason, staff_id, day)
-        select d.student_id, 'discipline', 'clean_week', (abs(d.xp) / 2)::int,
-          ${"Clean week: half of last week's deductions back"}, null, ${addDays(week, 5)}::date
-        from (select student_id, sum(xp) as xp from points
-              where pillar = 'discipline' and xp < 0 and reversed_by_id is null and reverses_id is null
-                and day >= ${prev} and day < ${week} group by student_id) d
-        where abs(d.xp) / 2 >= 1 and not exists (
-          select 1 from points p where p.student_id = d.student_id and p.pillar = 'discipline' and p.xp < 0
-            and p.reversed_by_id is null and p.reverses_id is null and p.day >= ${week} and p.day < ${next})
-          and not exists (select 1 from points c where c.student_id = d.student_id and c.action = 'clean_week' and c.day = ${addDays(week, 5)}::date)`;
-      // Podium Finish: top 3 of each class on net XP when the week ends.
-      await tx`
-        insert into badge_awards (student_id, badge, earned_on)
-        select id, 'podium', ${addDays(week, 5)}::date from (
-          select u.id, coalesce(sum(p.xp), 0) as net,
-            row_number() over (partition by st.batch_id order by coalesce(sum(p.xp), 0) desc,
-              count(p.*) filter (where p.xp < 0 and p.reversed_by_id is null and p.reverses_id is null), u.name) as r
-          from students st join users u on u.id = st.user_id and u.active and u.status = 'approved'
-          left join points p on p.student_id = u.id and p.day >= (select coalesce((select value from point_rules where key = 'term_start'), ${String(RULES.term_start.def)}))::date
-            and p.day < ${next}
-          group by u.id, u.name, st.batch_id) t
-        where r <= 3 and net > 0
-        on conflict do nothing`;
-      week = next;
-    }
-    await tx`insert into app_state values ('clean_weeks_through', ${week}) on conflict (key) do update set value = excluded.value`;
-  });
+  // One request settles; the rest skip it rather than wait, so a slow settle never holds up page loads.
+  try {
+    await sql.begin((tx) => settleWeeksIn(tx, thisMonday));
+  } catch (e) {
+    console.error("settleCleanWeeks failed", e);
+  }
+}
+
+async function settleWeeksIn(tx: Db, thisMonday: string) {
+  const [{ got }] = await tx`select pg_try_advisory_xact_lock(73311) as got`;
+  if (!got) return;
+  await tx`set local statement_timeout = '20s'`;
+  const [st] = await tx`select value from app_state where key = 'clean_weeks_through'`;
+  const [first] = await tx`select min(day)::text as d from points`;
+  if (!first?.d) {
+    await tx`insert into app_state values ('clean_weeks_through', ${thisMonday}) on conflict (key) do update set value = excluded.value`;
+    return;
+  }
+  // Weeks are settled when the week after them has finished: [prev, week) had deductions, [week, next) had none.
+  let week = st?.value ? st.value as string : addDays(mondayOf(first.d), 7);
+  while (addDays(week, 7) <= thisMonday) {
+    const prev = addDays(week, -7), next = addDays(week, 7);
+    await tx`
+      insert into points (student_id, pillar, action, xp, reason, staff_id, day)
+      select d.student_id, 'discipline', 'clean_week', (abs(d.xp) / 2)::int,
+        ${"Clean week: half of last week's deductions back"}, null, ${addDays(week, 5)}::date
+      from (select student_id, sum(xp) as xp from points
+            where pillar = 'discipline' and xp < 0 and reversed_by_id is null and reverses_id is null
+              and day >= ${prev} and day < ${week} group by student_id) d
+      where abs(d.xp) / 2 >= 1 and not exists (
+        select 1 from points p where p.student_id = d.student_id and p.pillar = 'discipline' and p.xp < 0
+          and p.reversed_by_id is null and p.reverses_id is null and p.day >= ${week} and p.day < ${next})
+        and not exists (select 1 from points c where c.student_id = d.student_id and c.action = 'clean_week' and c.day = ${addDays(week, 5)}::date)`;
+    // Podium Finish: top 3 of each class on net XP when the week ends.
+    await tx`
+      insert into badge_awards (student_id, badge, earned_on)
+      select id, 'podium', ${addDays(week, 5)}::date from (
+        select u.id, coalesce(sum(p.xp), 0) as net,
+          row_number() over (partition by st.batch_id order by coalesce(sum(p.xp), 0) desc,
+            count(p.*) filter (where p.xp < 0 and p.reversed_by_id is null and p.reverses_id is null), u.name) as r
+        from students st join users u on u.id = st.user_id and u.active and u.status = 'approved'
+        left join points p on p.student_id = u.id and p.day >= (select coalesce((select value from point_rules where key = 'term_start'), ${String(RULES.term_start.def)}))::date
+          and p.day < ${next}
+        group by u.id, u.name, st.batch_id) t
+      where r <= 3 and net > 0
+      on conflict do nothing`;
+    week = next;
+  }
+  await tx`insert into app_state values ('clean_weeks_through', ${week}) on conflict (key) do update set value = excluded.value`;
 }
 
 // ── Self-study ──
