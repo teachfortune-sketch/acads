@@ -145,7 +145,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               <h2>Built for focused study</h2>
             </div>
             <div className="lp-fac">
-              <div><i></i><h3>Three classrooms</h3><p>Batches for different classes can run side by side, each in its own room.</p></div>
+              <div><i></i><h3>Interactive classes</h3><p>Students ask questions, discuss ideas and solve problems together in class.</p></div>
               <div><i></i><h3>Numbered worksheets</h3><p>Numbered practice sheets for each chapter, given to the whole batch and checked by the teacher.</p></div>
               <div><i></i><h3>Student and parent portal</h3><p>Every student and parent gets their own login to see classes, homework, marks and notices.</p></div>
               <div><i></i><h3>Missed-class notes</h3><p>If a student is absent, the class notes and homework are waiting for them online the same day.</p></div>
