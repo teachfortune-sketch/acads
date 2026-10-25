@@ -8,7 +8,9 @@ const TABS: Record<Session["role"], [string, string][]> = {
   parent: [["/parent", "Overview"], ["/parent?tab=progress", "Progress"], ["/parent?tab=classes", "Classes"]],
 };
 
-export function Shell({ s, active, children }: { s: Session; active: string; children: React.ReactNode }) {
+// child keeps a parent's chosen child selected when they switch tabs.
+export function Shell({ s, active, child, children }: { s: Session; active: string; child?: number; children: React.ReactNode }) {
+  const withChild = (href: string) => (child ? `${href}${href.includes("?") ? "&" : "?"}child=${child}` : href);
   return (
     <>
       <header className="top">
@@ -18,7 +20,7 @@ export function Shell({ s, active, children }: { s: Session; active: string; chi
           </Link>
           <nav className="tabs">
             {TABS[s.role].map(([href, label]) => (
-              <Link key={href} href={href} className="tab" aria-current={active === href}>
+              <Link key={href} href={withChild(href)} className="tab" aria-current={active === href}>
                 {label}
               </Link>
             ))}

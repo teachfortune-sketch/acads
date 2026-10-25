@@ -16,7 +16,7 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
   const chosen = children.find((c) => c.id === Number(child)) ?? children[0];
   const st = (await getStudent(chosen.id))!;
   return (
-    <Shell s={s} active={active}>
+    <Shell s={s} active={active} child={chosen.id}>
       <div>
         <h1>{st.name}</h1>
         <p className="muted">{st.batch}</p>
