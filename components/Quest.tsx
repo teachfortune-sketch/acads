@@ -2,8 +2,10 @@ import Link from "next/link";
 import { sql } from "@/lib/db";
 import { StudentInfo } from "@/lib/queries";
 import {
-  attendanceStreak, batchBoard, BoardRow, FeedRow, getRules, homeworkStreak, nextStep, PILLARS, Pillar, pillarTotals, questLabel, studentFeed,
+  attendanceStreak, batchBoard, BoardRow, FeedRow, getRules, homeworkStreak, nextStep, PILLARS, Pillar, pillarTotals, questLabel, routineStreak,
+  studentBadges, studentFeed,
 } from "@/lib/points";
+import { classSyllabus } from "@/lib/syllabus";
 import { fmtDate, todayIST } from "@/lib/util";
 import { AutoRefresh } from "./AutoRefresh";
 
@@ -37,14 +39,21 @@ export function PillarLegend() {
 
 export async function QuestHome({ st, viewer }: { st: StudentInfo; viewer: "student" | "parent" | "staff" }) {
   const today = todayIST();
-  const [board, feed, pillars, hwStreak, attStreak, rules, quests] = await Promise.all([
-    batchBoard(st.batch_id), studentFeed(st.id, 30), pillarTotals(st.id), homeworkStreak(sql, st.id), attendanceStreak(sql, st.id), getRules(),
+  const [board, feed, pillars, hwStreak, attStreak, rtStreak, rules, syllabus, quests] = await Promise.all([
+    batchBoard(st.batch_id), studentFeed(st.id, 30), pillarTotals(st.id), homeworkStreak(sql, st.id), attendanceStreak(sql, st.id), routineStreak(sql, st.id), getRules(),
+    classSyllabus(st.batch_id, st.batch),
     sql`select q.*, q.due_on::text as due, sub.name as subject, u.name as poster, c.done, c.stars
       from quests q join subjects sub on sub.id = q.subject_id join users u on u.id = q.posted_by
       left join quest_checks c on c.quest_id = q.id and c.student_id = ${st.id}
       where q.batch_id = ${st.batch_id} and q.due_on >= ${today} order by q.due_on limit 3`,
   ]);
   const me = board.find((r) => r.id === st.id);
+  const badges = await studentBadges(st.id, me?.earned ?? 0);
+  const subjects = [...new Map(syllabus.map((c) => [c.subject_id, c.subject])).entries()].map(([id, name]) => {
+    const all = syllabus.filter((c) => c.subject_id === id);
+    return { id, name, total: all.length, taught: all.filter((c) => c.taught).length };
+  });
+  const childQ = viewer === "parent" ? `?child=${st.id}` : viewer === "staff" ? `?batch=${st.batch_id}` : "";
   const you = viewer === "student";
   const first = st.name.split(" ")[0];
   const lvl = me ? me.level : 1;
@@ -89,7 +98,8 @@ export async function QuestHome({ st, viewer }: { st: StudentInfo; viewer: "stud
         </div>
       </div>
       <div className="grid streaks">
-        {([["Homework streak", hwStreak, "homework done on every homework day"], ["Attendance streak", attStreak, "on time every class day"]] as const).map(([label, n, what]) => {
+        {([["Homework streak", hwStreak, "homework done on every homework day"], ["Attendance streak", attStreak, "on time every class day"],
+          ["Routine streak", rtStreak, "days you followed your own study routine"]] as const).map(([label, n, what]) => {
           const step = nextStep(n);
           return (
             <div className="panel streak" key={label}>
@@ -104,7 +114,7 @@ export async function QuestHome({ st, viewer }: { st: StudentInfo; viewer: "stud
       <div className="panel">
         <div className="row-actions" style={{ justifyContent: "space-between" }}>
           <h2>Where {you ? "your" : `${first}'s`} points come from</h2>
-          <Link href={`/board${viewer === "staff" ? `?batch=${st.batch_id}` : ""}`} className="btn small">Leaderboard</Link>
+          <Link href={`/board${childQ}`} className="btn small">Leaderboard</Link>
         </div>
         <div className="pillars">
           {PILLARS.map((p) => (
@@ -116,6 +126,43 @@ export async function QuestHome({ st, viewer }: { st: StudentInfo; viewer: "stud
           ))}
         </div>
       </div>
+      <div className="panel">
+        <div className="row-actions" style={{ justifyContent: "space-between" }}>
+          <h2>Badges</h2>
+          <span className="small num">{badges.filter((b) => b.earned).length} / {badges.length} unlocked</span>
+        </div>
+        <div className="badges">
+          {badges.map((b) => (
+            <div key={b.key} className={`badge${b.earned ? "" : " locked"}`}>
+              <span className="seal" style={b.earned ? { background: b.color } : undefined}>{b.seal}</span>
+              <b>{b.name}</b>
+              <span className="small muted">{b.desc}</span>
+              {!b.earned && <span className="prog" role="img" aria-label={`${b.have} of ${b.need}`}><span style={{ width: `${(b.have / b.need) * 100}%` }} /></span>}
+              <span className="small num">{b.earned ? "Unlocked" : `${b.have} / ${b.need}`}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {subjects.length > 0 && (
+        <div className="panel">
+          <div className="row-actions" style={{ justifyContent: "space-between" }}>
+            <h2>Syllabus taught</h2>
+            <div className="row-actions">
+              {viewer === "student" && <Link href="/planner" className="btn small">Planner</Link>}
+              <Link href={`/syllabus${childQ}`} className="btn small">Syllabus</Link>
+            </div>
+          </div>
+          <div className="sylbars">
+            {subjects.map((x) => (
+              <Link key={x.id} href={`/syllabus${childQ}${childQ ? "&" : "?"}subject=${x.id}`} className="sylbar">
+                <span>{x.name}</span>
+                <span className="xpbar thin" aria-hidden><span style={{ width: `${(x.taught / x.total) * 100}%` }} /></span>
+                <span className="num small">{x.taught}/{x.total}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
       <Feed feed={feed} />
     </>
   );

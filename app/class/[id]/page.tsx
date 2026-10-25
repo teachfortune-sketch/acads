@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { requireRole, TEACHING } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { canTeach } from "@/lib/queries";
-import { getRules, questLabel } from "@/lib/points";
+import { getRules, mondayOf, questLabel } from "@/lib/points";
 import { booksFor } from "@/lib/books";
+import { classSyllabus, groupBooks } from "@/lib/syllabus";
+import { toggleTaught } from "@/app/syllabus/actions";
 import { fmtDate } from "@/lib/util";
 import { Shell } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
@@ -39,14 +41,27 @@ export default async function ClassModePage({ params, searchParams }: { params: 
     left join quest_checks c on c.quest_id = ${quest?.id ?? 0} and c.student_id = u.id
     where st.batch_id = ${l.batch_id}
     order by nullif(regexp_replace(st.roll_no, '\\D', '', 'g'), '')::int nulls last, u.name`;
+  // Self-study: tasks students shared for this subject that are waiting, or were checked this week.
+  const monday = mondayOf(l.day);
+  const ssRows = await sql`
+    select t.id, t.student_id, t.text, t.done_at is not null as done, t.verdict, c.no, c.name as chapter
+    from study_tasks t join students st on st.user_id = t.student_id and st.batch_id = ${l.batch_id}
+    left join syllabus_chapters c on c.id = t.chapter_id
+    where t.subject_id = ${l.subject_id} and t.shared and (t.verdict is null or (t.verified_at at time zone 'Asia/Kolkata')::date >= ${monday}::date)
+    order by t.created_at`;
+  const routine = await sql`select r.student_id, r.days from routine_checks r join students st on st.user_id = r.student_id
+    where st.batch_id = ${l.batch_id} and r.week_start = ${monday}`;
   const tiles: Tile[] = rows.map((r) => ({
     id: r.id, name: r.name, roll: r.roll_no, status: r.status ?? null, arrived: r.arrived, todayXp: r.today_xp,
     hw: r.done == null ? null : { done: r.done, stars: r.stars, bonus: r.bonus },
+    ss: ssRows.filter((t) => t.student_id === r.id).map((t) => ({ id: t.id, text: t.text, chapter: t.chapter ? `Ch ${t.no} · ${t.chapter}` : "", done: t.done, verdict: t.verdict })),
+    routine: routine.find((x) => x.student_id === r.id)?.days ?? null,
   }));
   const recent = await sql`select id, student_id as student, reason, xp from points
     where staff_id = ${s.uid} and pillar in ('presence','discipline') and action <> 'clean_week' and created_at > now() - interval '10 minutes'
       and reversed_by_id is null and reverses_id is null order by id desc`;
   const books = booksFor(l.batch, l.subject);
+  const syllabus = (await classSyllabus(l.batch_id, l.batch)).filter((c) => c.subject_id === l.subject_id);
   return (
     <Shell s={s} active="/class">
       <div className="row-actions"><Link href="/class" className="btn small">← Class mode</Link></div>
@@ -58,6 +73,7 @@ export default async function ClassModePage({ params, searchParams }: { params: 
       <ClassMode owner={s.uid} day={l.day} tiles={tiles} isAdmin={s.role === "admin"} quest={quest ? { id: quest.id, label: questLabel(quest) || quest.note } : null}
         recent={recent.map((r) => ({ id: r.id, student: r.student, reason: r.reason, xp: r.xp }))}
         values={{
+          ssVerified: Number(rules.ss_verified), ssGreat: Number(rules.ss_great), ssCap: Number(rules.ss_cap_week),
           plus: Number(rules.presence_plus), minus: Number(rules.presence_minus), hwBonusMax: Number(rules.hw_bonus_max), otherMax: Number(rules.disc_other_max),
           disc: { uniform: Number(rules.disc_uniform), phone: Number(rules.disc_phone), disruption: Number(rules.disc_disruption), misbehaviour: Number(rules.disc_misbehaviour) },
         }} />
@@ -72,8 +88,20 @@ export default async function ClassModePage({ params, searchParams }: { params: 
             </p>
           )}
           <label>Due on<input id="due_on" name="due_on" type="date" defaultValue={next?.due ?? nextDay(l.day)} min={nextDay(l.day)} required /></label>
+          {syllabus.length > 0 && (
+            <label className="full">Syllabus chapter
+              <select id="chapter_id" name="chapter_id" defaultValue="">
+                <option value="">Not from the NCERT syllabus (fill in book and chapter)</option>
+                {groupBooks(syllabus).map((g) => (
+                  <optgroup key={g.book} label={g.book}>
+                    {g.chapters.map((c) => <option key={c.id} value={c.id}>Ch {c.no} · {c.name}{c.taught ? " (taught)" : ""}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+          )}
           <label>Book
-            <input id="book" name="book" list="books" defaultValue={books[0]} required />
+            <input id="book" name="book" list="books" defaultValue={books[0]} />
             <datalist id="books">{books.map((b) => <option key={b} value={b} />)}</datalist>
           </label>
           <label>Chapter<input id="chapter" name="chapter" placeholder="e.g. 4 · Linear Equations" /></label>
@@ -92,6 +120,27 @@ export default async function ClassModePage({ params, searchParams }: { params: 
             <Link href={`/teach/lectures/${l.id}`} className="small">Open full class log</Link>
           </div>
         </form>
+        {syllabus.length > 0 && (
+          <form action={toggleTaught} className="panel form" style={{ gridTemplateColumns: "1fr" }}>
+            <input type="hidden" name="batch_id" value={l.batch_id} />
+            <h2>Syllabus</h2>
+            <p className="small"><b className="num">{syllabus.filter((c) => c.taught).length}/{syllabus.length}</b> {l.subject} chapters taught to {l.batch}.</p>
+            <label>Mark a chapter taught
+              <select name="chapter_id" required defaultValue="">
+                <option value="" disabled>Pick a chapter</option>
+                {groupBooks(syllabus.filter((c) => !c.taught)).map((g) => (
+                  <optgroup key={g.book} label={g.book}>
+                    {g.chapters.map((c) => <option key={c.id} value={c.id}>Ch {c.no} · {c.name}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            <div className="row-actions">
+              <button type="submit">Mark taught</button>
+              <Link href={`/syllabus?batch=${l.batch_id}&subject=${l.subject_id}`} className="small">Open the full syllabus</Link>
+            </div>
+          </form>
+        )}
       </div>
     </Shell>
   );
