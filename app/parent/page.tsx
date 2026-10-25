@@ -4,13 +4,15 @@ import { sql } from "@/lib/db";
 import { getStudent } from "@/lib/queries";
 import { Shell } from "@/components/Shell";
 import { Classes, Overview, Progress } from "@/components/StudentViews";
+import { Entries, FeeTotals, Schedule } from "@/components/FeeViews";
+import { getLedger } from "@/lib/fees";
 
 export default async function ParentPage({ searchParams }: { searchParams: Promise<{ tab?: string; child?: string }> }) {
   const s = await requireRole("parent");
   const { tab, child } = await searchParams;
   const children = await sql<{ id: number; name: string }[]>`
     select u.id, u.name from students st join users u on u.id = st.user_id where st.parent_id = ${s.uid} order by u.name`;
-  const active = tab === "progress" || tab === "classes" ? `/parent?tab=${tab}` : "/parent";
+  const active = tab === "progress" || tab === "classes" || tab === "fees" ? `/parent?tab=${tab}` : "/parent";
   if (!children.length)
     return <Shell s={s} active={active}><p>No child is linked to your login yet. Please tell Rahul.</p></Shell>;
   const chosen = children.find((c) => c.id === Number(child)) ?? children[0];
@@ -30,7 +32,20 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
           ))}
         </div>
       )}
-      {tab === "progress" ? <Progress st={st} /> : tab === "classes" ? <Classes st={st} /> : <Overview st={st} forParent />}
+      {tab === "fees" ? <Fees id={st.id} /> : tab === "progress" ? <Progress st={st} /> : tab === "classes" ? <Classes st={st} /> : <Overview st={st} forParent />}
     </Shell>
+  );
+}
+
+async function Fees({ id }: { id: number }) {
+  const { plans, entries, totals } = await getLedger(id);
+  return (
+    <>
+      <FeeTotals t={totals} />
+      <h2>Fee schedule</h2>
+      <Schedule plans={plans.filter((p) => !p.cancelled_at)} />
+      <Entries entries={entries} child={id} />
+      <p className="muted small">If anything here looks wrong, please speak to Rahul at the institute.</p>
+    </>
   );
 }

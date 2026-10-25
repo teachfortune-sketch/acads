@@ -2,7 +2,8 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { getBatches, getSubjects } from "@/lib/queries";
-import { level, pct } from "@/lib/util";
+import { feeSummary } from "@/lib/fees";
+import { level, pct, rupees } from "@/lib/util";
 import { Shell } from "@/components/Shell";
 import { BatchChips } from "@/components/BatchChips";
 
@@ -11,7 +12,8 @@ type Row = { id: number; name: string; batch: string; subject_id: number; classe
 export default async function AdminPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const s = await requireRole("admin");
   const batch = Number((await searchParams).batch) || null;
-  const [batches, subjects] = await Promise.all([getBatches(), getSubjects()]);
+  const [batches, subjects, fees] = await Promise.all([getBatches(), getSubjects(), feeSummary(batch)]);
+  const overdue = fees.filter((f) => f.overdue > 0);
   // One row per student per subject.
   const rows = await sql<Row[]>`
     select u.id, u.name, b.name as batch, sub.id as subject_id,
@@ -55,6 +57,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <Link href="/admin/people" className="btn btn-p">Add a student</Link>
       </div>
       <BatchChips batches={batches} current={batch} base="/admin" all />
+      {overdue.length > 0 && (
+        <div className="banner">
+          <b>Fees overdue:</b> {rupees(overdue.reduce((a, f) => a + f.overdue, 0))} from {overdue.length} student{overdue.length > 1 ? "s" : ""}.{" "}
+          <Link href={`/admin/fees${batch ? `?batch=${batch}` : ""}`}>See fees</Link>
+        </div>
+      )}
       {flagged.length > 0 && (
         <div className="banner">
           <b>Needs attention:</b> {flagged.map((x) => x.name).join(", ")} (attendance under 80% or test average under 60%).

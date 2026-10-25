@@ -179,3 +179,52 @@ create table if not exists enquiries (
   created_at timestamptz not null default now()
 );
 create index if not exists enquiries_status_idx on enquiries (status, created_at desc);
+
+-- Fees. A plan is split into installments (what is due and when).
+-- Payments and concessions are never deleted: a mistake is reversed with a reason.
+create table if not exists fee_plans (
+  id serial primary key,
+  student_id integer not null references users(id) on delete cascade,
+  title text not null,
+  created_by integer not null references users(id),
+  created_at timestamptz not null default now(),
+  cancelled_at timestamptz,
+  cancelled_by integer references users(id),
+  cancel_reason text not null default ''
+);
+create table if not exists fee_installments (
+  id serial primary key,
+  plan_id integer not null references fee_plans(id) on delete cascade,
+  due_on date not null,
+  amount integer not null check (amount > 0)
+);
+create table if not exists fee_payments (
+  id serial primary key,
+  receipt_no integer not null unique,
+  student_id integer not null references users(id) on delete cascade,
+  amount integer not null check (amount > 0),
+  paid_on date not null,
+  mode text not null check (mode in ('Cash','UPI','Bank transfer','Cheque')),
+  reference text not null default '',
+  note text not null default '',
+  form_token text unique,
+  created_by integer not null references users(id),
+  created_at timestamptz not null default now(),
+  reversed_at timestamptz,
+  reversed_by integer references users(id),
+  reversal_reason text not null default ''
+);
+create table if not exists fee_concessions (
+  id serial primary key,
+  student_id integer not null references users(id) on delete cascade,
+  amount integer not null check (amount > 0),
+  reason text not null,
+  created_by integer not null references users(id),
+  created_at timestamptz not null default now(),
+  reversed_at timestamptz,
+  reversed_by integer references users(id),
+  reversal_reason text not null default ''
+);
+create index if not exists fee_plans_student_idx on fee_plans (student_id);
+create index if not exists fee_payments_student_idx on fee_payments (student_id);
+create index if not exists fee_concessions_student_idx on fee_concessions (student_id);

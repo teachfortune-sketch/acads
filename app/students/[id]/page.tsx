@@ -23,6 +23,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       <div className="row-actions">
         <Link href={s.role === "admin" ? `/admin?batch=${st.batch_id}` : "/teach"} className="btn small">← Back</Link>
         {s.role === "admin" && <Link href={`/admin/people/${st.id}`} className="btn small">Edit login</Link>}
+        {s.role === "admin" && <Link href={`/admin/fees/${st.id}`} className="btn small">Fees</Link>}
       </div>
       <div>
         <h1>{st.name}</h1>
