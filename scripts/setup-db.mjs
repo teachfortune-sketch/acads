@@ -45,9 +45,10 @@ for (const file of readdirSync(new URL("../db/", import.meta.url)).filter((f) =>
   const subjectIds = Object.fromEntries((await sql`select id, name from subjects`).map((s) => [s.name, s.id]));
   const values = rows.filter((r) => subjectIds[r.subject])
     .map((r, i) => ({ session, grade: r.grade, subject_id: subjectIds[r.subject], book: r.book, unit: r.unit, no: r.no, name: r.name, sort: i }));
-  await sql`insert into syllabus_chapters ${sql(values)}
-    on conflict (session, grade, subject_id, book, no) do update set unit = excluded.unit, name = excluded.name, sort = excluded.sort`;
-  console.log(`Syllabus ${session}: ${rows.length} chapters.`);
+  if (values.length)
+    await sql`insert into syllabus_chapters ${sql(values)}
+      on conflict (session, grade, subject_id, book, no) do update set unit = excluded.unit, name = excluded.name, sort = excluded.sort`;
+  console.log(`Syllabus ${session}: ${values.length} of ${rows.length} chapters.`);
 }
 // Sync worksheets from the sheets/ folder and assign each to its batch.
 const sheetDir = new URL("../sheets/", import.meta.url);
