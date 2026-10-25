@@ -10,6 +10,8 @@ const LOCK_AFTER = 5, LOCK_MINUTES = 15;
 const fail = (text: string) => redirect(withMsg("/login", "err", text));
 
 export async function login(fd: FormData) {
+  // Without a secret no session can be signed; say so instead of failing silently (e.g. a preview missing its env vars).
+  if (!process.env.SESSION_SECRET) fail("Sign-in isn't set up on this site yet: SESSION_SECRET is missing in Vercel's environment variables.");
   const username = str(fd, "username").toLowerCase();
   const [u] = await sql`select id, name, role, password_hash, active, status, session_version, failed_logins,
     locked_until > now() as locked from users where username = ${username}`;
