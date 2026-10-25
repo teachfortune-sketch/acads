@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { login } from "./actions";
 import { Flash } from "@/components/Flash";
 
@@ -23,7 +24,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             </label>
             <button className="btn-p" type="submit">Sign in</button>
           </form>
-          <p className="muted small">Forgot your password? Ask Rahul to reset it.</p>
+          <div className="row-actions small">
+            <Link href="/login/forgot">Forgot password?</Link>
+          </div>
+        </div>
+        <div className="panel row-actions" style={{ justifyContent: "space-between" }}>
+          <span><b>New student?</b> <span className="muted">Create your account and wait for approval.</span></span>
+          <Link href="/signup" className="btn small">Sign up</Link>
         </div>
       </div>
     </main>

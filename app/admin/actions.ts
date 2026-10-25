@@ -44,7 +44,7 @@ export async function createStudent(fd: FormData) {
       parentId = (await insertUser(tx, pName, pUser, pPass, "parent")) ?? null;
       if (!parentId) throw new Error(`The username “${pUser}” is already taken.`);
     }
-    await tx`insert into students (user_id, batch_id, parent_id) values (${sid}, ${batchId}, ${parentId})`;
+    await tx`insert into students (user_id, batch_id, parent_id, section, roll_no) values (${sid}, ${batchId}, ${parentId}, ${str(fd, "section")}, ${str(fd, "roll_no")})`;
     await tx`insert into sheet_students (sheet_id, student_id) select id, ${sid} from sheets where batch_id = ${batchId}`;
     return null;
   }).catch((e: Error) => e.message);
@@ -53,22 +53,24 @@ export async function createStudent(fd: FormData) {
   redirect(withMsg(back, "ok", `${name} added. Give them the username “${username}” and the password you set.`));
 }
 
+// Staff: teachers, reception and other admins.
 export async function createTeacher(fd: FormData) {
   await requireRole("admin");
   const back = "/admin/people";
   const name = str(fd, "name"), username = str(fd, "username").toLowerCase(), password = str(fd, "password");
-  if (!name) redirect(withMsg(back, "err", "Fill in the teacher's name."));
+  const role = ["teacher", "reception", "admin"].includes(str(fd, "role")) ? str(fd, "role") : "teacher";
+  if (!name) redirect(withMsg(back, "err", "Fill in the staff member's name."));
   checkLogin(username, password, back);
-  const subjects = fd.getAll("subjects").map(Number).filter(Boolean);
+  const subjects = role === "reception" ? [] : fd.getAll("subjects").map(Number).filter(Boolean);
   const err = await sql.begin(async (tx) => {
-    const id = await insertUser(tx, name, username, password, "teacher");
+    const id = await insertUser(tx, name, username, password, role);
     if (!id) return `The username “${username}” is already taken.`;
     for (const sub of subjects) await tx`insert into teacher_subjects (teacher_id, subject_id) values (${id}, ${sub})`;
     return null;
   });
   if (err) redirect(withMsg(back, "err", err));
   revalidatePath("/", "layout");
-  redirect(withMsg(back, "ok", `${name} added as a teacher.`));
+  redirect(withMsg(back, "ok", `${name} added as ${role === "admin" ? "an admin" : role}.`));
 }
 
 export async function createParent(fd: FormData) {
@@ -99,7 +101,8 @@ export async function updateUser(fd: FormData) {
     if (u.role === "student") {
       const batchId = int(fd, "batch_id");
       if (batchId) {
-        await tx`update students set batch_id = ${batchId}, parent_id = ${int(fd, "parent_id")} where user_id = ${u.id}`;
+        await tx`update students set batch_id = ${batchId}, parent_id = ${int(fd, "parent_id")}, section = ${str(fd, "section")},
+          roll_no = ${str(fd, "roll_no")} where user_id = ${u.id}`;
         await tx`insert into sheet_students (sheet_id, student_id) select id, ${u.id} from sheets where batch_id = ${batchId} on conflict do nothing`;
       }
     }

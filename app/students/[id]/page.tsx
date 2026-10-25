@@ -8,6 +8,9 @@ import { Flash } from "@/components/Flash";
 import { addBehaviourNote, deleteBehaviourNote } from "@/app/admin/actions";
 import { Shell } from "@/components/Shell";
 import { Classes, Overview, Progress } from "@/components/StudentViews";
+import { Feed, QuestHome } from "@/components/Quest";
+import { studentFeed } from "@/lib/points";
+import { reversePoint } from "@/app/admin/quest-actions";
 
 // Full profile for admin and teachers.
 export default async function StudentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string>> }) {
@@ -27,9 +30,15 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       </div>
       <div>
         <h1>{st.name}</h1>
-        <p className="muted">{st.batch} · username {st.username}{st.parent ? ` · parent: ${st.parent}` : ""}</p>
+        <p className="muted">{st.batch}{st.section ? ` · section ${st.section}` : ""}{st.roll_no ? ` · roll ${st.roll_no}` : ""} · username {st.username}{st.parent ? ` · parent login: ${st.parent}` : ""}</p>
+        {(st.school || st.parent_name) && (
+          <p className="small">{st.school}{st.parent_name ? ` · parent ${st.parent_name}` : ""}{st.parent_mobile ? <>, <span className="num">{st.parent_mobile}</span></> : ""}</p>
+        )}
       </div>
       <Flash sp={sp} />
+      <QuestHome st={st} viewer="staff" />
+      {s.role === "admin" && <ReversibleFeed id={st.id} />}
+      <h2>Classes and homework</h2>
       <Overview st={st} forParent />
       <h2>Progress</h2>
       <Progress st={st} />
@@ -67,5 +76,23 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
         </div>
       )}
     </Shell>
+  );
+}
+
+// The admin can reverse any entry with a note; the reversal is a new entry, so the history stays.
+async function ReversibleFeed({ id }: { id: number }) {
+  const feed = await studentFeed(id, 100);
+  return (
+    <details className="panel">
+      <summary><b>Reverse a point entry</b> <span className="muted small">(admin only)</span></summary>
+      <Feed feed={feed} reverse={(f) => (
+        <form action={reversePoint} className="inline-form" style={{ marginTop: 0 }}>
+          <input type="hidden" name="id" value={f.id} />
+          <input type="hidden" name="student_id" value={id} />
+          <input name="note" aria-label="Why" placeholder="Why" required maxLength={140} />
+          <button className="small btn-danger" type="submit">Reverse</button>
+        </form>
+      )} />
+    </details>
   );
 }

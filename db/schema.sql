@@ -228,3 +228,110 @@ create table if not exists fee_concessions (
 create index if not exists fee_plans_student_idx on fee_plans (student_id);
 create index if not exists fee_payments_student_idx on fee_payments (student_id);
 create index if not exists fee_concessions_student_idx on fee_concessions (student_id);
+
+-- ── Questboard ─────────────────────────────────────────────────────────────
+-- Reception is a staff role. Students can sign up and wait for approval.
+alter table users drop constraint if exists users_role_check;
+alter table users add constraint users_role_check check (role in ('admin','teacher','reception','student','parent'));
+alter table users add column if not exists status text not null default 'approved';
+alter table users drop constraint if exists users_status_check;
+alter table users add constraint users_status_check check (status in ('pending','approved','rejected'));
+alter table users add column if not exists reject_reason text not null default '';
+alter table users add column if not exists must_change_password boolean not null default false;
+alter table users add column if not exists failed_logins integer not null default 0;
+alter table users add column if not exists locked_until timestamptz;
+
+alter table students add column if not exists school text not null default '';
+alter table students add column if not exists section text not null default '';
+alter table students add column if not exists roll_no text not null default '';
+alter table students add column if not exists parent_name text not null default '';
+alter table students add column if not exists parent_mobile text not null default '';
+
+-- "Forgot password" requests wait here until an admin sets a temporary password.
+create table if not exists reset_requests (
+  id serial primary key,
+  user_id integer not null references users(id) on delete cascade,
+  note text not null default '',
+  created_at timestamptz not null default now(),
+  handled_at timestamptz,
+  handled_by integer references users(id)
+);
+
+-- Point values, caps and cut-offs the admin can change. Missing keys use the defaults in lib/points.ts.
+create table if not exists point_rules (
+  key text primary key,
+  value text not null
+);
+
+-- One attendance status per student per day (reception's late flag lands here too).
+create table if not exists day_attendance (
+  student_id integer not null references users(id) on delete cascade,
+  day date not null,
+  batch_id integer not null references batches(id),
+  status text not null check (status in ('present','late','absent','excused')),
+  arrived_at text not null default '',
+  marked_by integer not null references users(id),
+  updated_at timestamptz not null default now(),
+  primary key (student_id, day)
+);
+create index if not exists day_attendance_batch_idx on day_attendance (batch_id, day);
+
+-- The day's homework quest: one per batch per day, due on due_on.
+create table if not exists quests (
+  id serial primary key,
+  batch_id integer not null references batches(id),
+  subject_id integer not null references subjects(id),
+  due_on date not null,
+  book text not null default '',
+  chapter text not null default '',
+  exercise text not null default '',
+  questions text not null default '',
+  note text not null default '',
+  lecture_id integer references lectures(id) on delete set null,
+  posted_by integer not null references users(id),
+  created_at timestamptz not null default now(),
+  unique (batch_id, due_on)
+);
+
+-- How each student did on a quest, checked by hand in class.
+create table if not exists quest_checks (
+  quest_id integer not null references quests(id) on delete cascade,
+  student_id integer not null references users(id) on delete cascade,
+  done boolean not null,
+  stars integer not null default 0 check (stars between 0 and 3),
+  bonus integer not null default 0 check (bonus between 0 and 100),
+  checked_by integer not null references users(id),
+  checked_at timestamptz not null default now(),
+  primary key (quest_id, student_id)
+);
+
+-- Every point change. Never edited or deleted: a reversal is a new row pointing at the original.
+create table if not exists points (
+  id serial primary key,
+  student_id integer not null references users(id) on delete cascade,
+  pillar text not null check (pillar in ('homework','attendance','presence','discipline','selfstudy')),
+  action text not null,
+  xp integer not null,
+  reason text not null,
+  note text not null default '',
+  staff_id integer references users(id),
+  quest_id integer references quests(id) on delete set null,
+  day date not null,
+  client_id text unique,
+  created_at timestamptz not null default now(),
+  reverses_id integer references points(id),
+  reversed_by_id integer references points(id)
+);
+create index if not exists points_student_idx on points (student_id, created_at desc);
+create index if not exists points_day_idx on points (day);
+
+create table if not exists app_state (
+  key text primary key,
+  value text not null
+);
+
+-- Actions sent from class mode and the reception desk carry an id, so a retry after a bad connection is not counted twice.
+create table if not exists client_actions (
+  id text primary key,
+  done_at timestamptz not null default now()
+);
