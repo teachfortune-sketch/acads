@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
+import { canTeach } from "@/lib/queries";
 import { int, str, withMsg } from "@/lib/util";
 
 export async function createSheet(fd: FormData) {
@@ -33,10 +34,14 @@ export async function deleteSheet(fd: FormData) {
   redirect(withMsg("/teach/sheets", "ok", "Sheet deleted."));
 }
 
-// Teachers and admin tick who has finished a sheet.
+// Teachers of the sheet's subject (and admin) tick who has finished it.
 export async function updateSheetStatus(fd: FormData) {
-  await requireRole("admin", "teacher");
+  const s = await requireRole("admin", "teacher");
   const id = int(fd, "id");
+  const [sh] = id ? await sql`select subject_id from sheets where id = ${id}` : [];
+  if (!sh) redirect("/teach/sheets");
+  // A sheet without a subject can be ticked by any teacher.
+  if (sh.subject_id && !(await canTeach(s, sh.subject_id))) redirect(withMsg(`/sheets/${id}`, "err", "You don't teach that subject."));
   const rows = await sql`select student_id from sheet_students where sheet_id = ${id}`;
   await sql.begin(async (tx) => {
     for (const r of rows)

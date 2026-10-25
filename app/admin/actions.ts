@@ -45,6 +45,7 @@ export async function createStudent(fd: FormData) {
       if (!parentId) throw new Error(`The username “${pUser}” is already taken.`);
     }
     await tx`insert into students (user_id, batch_id, parent_id) values (${sid}, ${batchId}, ${parentId})`;
+    await tx`insert into sheet_students (sheet_id, student_id) select id, ${sid} from sheets where batch_id = ${batchId}`;
     return null;
   }).catch((e: Error) => e.message);
   if (result) redirect(withMsg(back, "err", result));
@@ -97,7 +98,10 @@ export async function updateUser(fd: FormData) {
       session_version = session_version + ${active ? 0 : 1} where id = ${u.id}`;
     if (u.role === "student") {
       const batchId = int(fd, "batch_id");
-      if (batchId) await tx`update students set batch_id = ${batchId}, parent_id = ${int(fd, "parent_id")} where user_id = ${u.id}`;
+      if (batchId) {
+        await tx`update students set batch_id = ${batchId}, parent_id = ${int(fd, "parent_id")} where user_id = ${u.id}`;
+        await tx`insert into sheet_students (sheet_id, student_id) select id, ${u.id} from sheets where batch_id = ${batchId} on conflict do nothing`;
+      }
     }
     if (u.role === "teacher" || u.role === "admin") {
       await tx`delete from teacher_subjects where teacher_id = ${u.id}`;

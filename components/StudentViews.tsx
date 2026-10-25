@@ -158,7 +158,7 @@ async function Work({ st, canTick }: { st: StudentInfo; canTick: boolean }) {
             {sheets.map((sh) => (
               <li key={sh.id}>
                 <div style={sh.done ? { opacity: 0.6 } : undefined}>
-                  <Link href={`/sheets/${sh.id}`}><b>Sheet {sh.number}</b>: {sh.title}</Link>
+                  <Link href={`/sheets/${sh.id}${canTick ? "" : `?child=${st.id}`}`}><b>Sheet {sh.number}</b>: {sh.title}</Link>
                   <div className="muted small">{sh.subject ?? "All subjects"}{sh.due_on ? ` · due ${fmtDate(sh.due_on)}` : ""}</div>
                 </div>
                 <Tick action={toggleSheet} id={sh.id} done={sh.done} />

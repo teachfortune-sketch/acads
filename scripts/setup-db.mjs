@@ -50,18 +50,22 @@ for (const file of readdirSync(sheetDir).filter((f) => f.endsWith(".md") && f !=
   if (!Number.isInteger(number) || !meta.title || !batch) { console.warn(`Skipped ${file}: needs number, title and a valid batch.`); continue; }
   const [subject] = meta.subject ? await sql`select id from subjects where lower(name) = lower(${meta.subject})` : [];
   const due = /^\d{4}-\d{2}-\d{2}$/.test(meta.due ?? "") ? meta.due : null;
+  const [before] = await sql`select batch_id from sheets where number = ${number}`;
   const [sheet] = await sql`
     insert into sheets (number, title, batch_id, subject_id, body, due_on)
     values (${number}, ${meta.title}, ${batch.id}, ${subject?.id ?? null}, ${m[2].trim()}, ${due})
     on conflict (number) do update set title = excluded.title, batch_id = excluded.batch_id,
       subject_id = excluded.subject_id, body = excluded.body, due_on = excluded.due_on
     returning id`;
-  await sql`
-    insert into sheet_students (sheet_id, student_id)
-    select ${sheet.id}, st.user_id from students st join users u on u.id = st.user_id
-    where st.batch_id = ${batch.id} and u.active
-    on conflict do nothing`;
+  // Moved to another batch: the old batch no longer has this sheet.
+  if (before && before.batch_id !== batch.id) await sql`delete from sheet_students where sheet_id = ${sheet.id}`;
   console.log(`Sheet ${number} synced.`);
 }
+// Give every sheet to students who joined its batch later, including sheets made on the site.
+await sql`
+  insert into sheet_students (sheet_id, student_id)
+  select sh.id, st.user_id from sheets sh join students st on st.batch_id = sh.batch_id join users u on u.id = st.user_id
+  where u.active
+  on conflict do nothing`;
 console.log("Database is ready.");
 await sql.end();

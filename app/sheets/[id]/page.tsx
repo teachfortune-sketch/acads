@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { canTeach } from "@/lib/queries";
 import { sql } from "@/lib/db";
 import { fmtDate } from "@/lib/util";
 import { Shell } from "@/components/Shell";
@@ -17,17 +18,20 @@ export default async function SheetPage({ params, searchParams }: { params: Prom
     where sh.id = ${Number((await params).id) || 0}`;
   if (!sh) notFound();
   const teaching = s.role === "admin" || s.role === "teacher";
-  // Students see their own sheets; parents see their children's.
+  // Students see their own sheets; parents see their children's (the chosen child first).
   const [mine] = s.role === "student"
-    ? await sql`select done from sheet_students where sheet_id = ${sh.id} and student_id = ${s.uid}`
+    ? await sql`select done, null as name from sheet_students where sheet_id = ${sh.id} and student_id = ${s.uid}`
     : s.role === "parent"
-      ? await sql`select ss.done from sheet_students ss join students st on st.user_id = ss.student_id where ss.sheet_id = ${sh.id} and st.parent_id = ${s.uid} limit 1`
+      ? await sql`select ss.done, u.name from sheet_students ss join students st on st.user_id = ss.student_id join users u on u.id = ss.student_id
+          where ss.sheet_id = ${sh.id} and st.parent_id = ${s.uid}
+          order by (ss.student_id = ${Number(sp.child) || 0}) desc, u.name limit 1`
       : [];
+  const canTick = s.role === "admin" || (s.role === "teacher" && (!sh.subject_id || (await canTeach(s, sh.subject_id))));
   if (!teaching && !mine) redirect("/");
   const rows = teaching
     ? await sql`select ss.student_id, ss.done, u.name from sheet_students ss join users u on u.id = ss.student_id where ss.sheet_id = ${sh.id} order by u.name`
     : [];
-  const home = teaching ? "/teach/sheets" : s.role === "parent" ? "/parent" : "/me";
+  const home = teaching ? "/teach/sheets" : s.role === "parent" ? `/parent${sp.child ? `?child=${Number(sp.child)}` : ""}` : "/me";
   return (
     <Shell s={s} active={home}>
       <div><Link href={home} className="btn small">← Back</Link></div>
@@ -42,7 +46,7 @@ export default async function SheetPage({ params, searchParams }: { params: Prom
           <button className={mine.done ? "" : "btn-p"} type="submit">{mine.done ? "✓ Done (tap to undo)" : "Mark as done"}</button>
         </form>
       )}
-      {s.role === "parent" && <p><span className={`chip ${mine.done ? "c-good" : "c-warn"}`}>{mine.done ? "Done" : "Not done yet"}</span></p>}
+      {s.role === "parent" && <p>{mine.name}: <span className={`chip ${mine.done ? "c-good" : "c-warn"}`}>{mine.done ? "Done" : "Not done yet"}</span></p>}
       <div className="panel"><div className="pre sheet-body">{sh.body || "No questions written yet."}</div></div>
       {teaching && (
         <form action={updateSheetStatus} className="panel tbl-wrap">
@@ -52,11 +56,11 @@ export default async function SheetPage({ params, searchParams }: { params: Prom
             <thead><tr><th>Student</th><th>Done</th></tr></thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.student_id}><td>{r.name}</td><td><input type="checkbox" id={`d_${r.student_id}`} name={`d_${r.student_id}`} defaultChecked={r.done} aria-label={`${r.name} done`} /></td></tr>
+                <tr key={r.student_id}><td>{r.name}</td><td><input type="checkbox" id={`d_${r.student_id}`} name={`d_${r.student_id}`} defaultChecked={r.done} disabled={!canTick} aria-label={`${r.name} done`} /></td></tr>
               ))}
             </tbody>
           </table>
-          <div style={{ marginTop: 10 }}><button className="btn-p" type="submit">Save</button></div>
+          {canTick && <div style={{ marginTop: 10 }}><button className="btn-p" type="submit">Save</button></div>}
         </form>
       )}
       {s.role === "admin" && (
