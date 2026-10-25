@@ -3,14 +3,14 @@ import { Session } from "@/lib/auth";
 import { sql } from "@/lib/db";
 
 const TABS: Record<Session["role"], [string, string][]> = {
-  admin: [["/admin", "Students"], ["/admin/approvals", "Approvals"], ["/class", "Class mode"], ["/desk", "Desk"], ["/board", "Leaderboard"],
+  admin: [["/admin", "Students"], ["/admin/approvals", "Approvals"], ["/class", "Class mode"], ["/desk", "Desk"], ["/board", "Leaderboard"], ["/syllabus", "Syllabus"], ["/admin/reports", "Reports"],
     ["/admin/points", "Point rules"], ["/admin/enquiries", "Enquiries"], ["/admin/fees", "Fees"], ["/admin/people", "Logins"], ["/admin/notices", "Notices"],
     ["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/tasks", "Tasks"], ["/teach/sheets", "Sheets"], ["/teach/remarks", "Remarks"]],
-  teacher: [["/class", "Class mode"], ["/board", "Leaderboard"], ["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"],
+  teacher: [["/class", "Class mode"], ["/board", "Leaderboard"], ["/syllabus", "Syllabus"], ["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"],
     ["/teach/tasks", "Tasks"], ["/teach/sheets", "Sheets"], ["/teach/remarks", "Remarks"]],
   reception: [["/desk", "Desk"], ["/board", "Leaderboard"]],
-  student: [["/me", "Home"], ["/board", "Leaderboard"], ["/me?tab=today", "Notes & tasks"], ["/me?tab=progress", "My progress"], ["/me?tab=classes", "All classes"]],
-  parent: [["/parent", "Points"], ["/board", "Leaderboard"], ["/parent?tab=overview", "Overview"], ["/parent?tab=progress", "Progress"], ["/parent?tab=classes", "Classes"], ["/parent?tab=fees", "Fees"]],
+  student: [["/me", "Home"], ["/board", "Leaderboard"], ["/planner", "Planner"], ["/syllabus", "Syllabus"], ["/me?tab=today", "Notes & tasks"], ["/me?tab=progress", "My progress"], ["/me?tab=classes", "All classes"]],
+  parent: [["/parent", "Points"], ["/board", "Leaderboard"], ["/syllabus", "Syllabus"], ["/parent?tab=overview", "Overview"], ["/parent?tab=progress", "Progress"], ["/parent?tab=classes", "Classes"], ["/parent?tab=fees", "Fees"]],
 };
 
 // child keeps a parent's chosen child selected when they switch tabs.

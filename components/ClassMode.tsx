@@ -5,9 +5,11 @@ import { SyncPill, useActionQueue } from "./useActionQueue";
 export type Tile = {
   id: number; name: string; roll: string; status: "present" | "late" | "absent" | "excused" | null; arrived: string;
   todayXp: number; hw: { done: boolean; stars: number; bonus: number } | null;
+  ss: { id: number; text: string; chapter: string; done: boolean; verdict: "verified" | "great" | null }[]; routine: number | null;
 };
 export type Recent = { id: number; student: number; reason: string; xp: number };
-type Mode = "attendance" | "homework" | "presence";
+type Mode = "attendance" | "homework" | "presence" | "selfstudy";
+const MODES: [Mode, string][] = [["attendance", "Attendance"], ["homework", "Homework"], ["presence", "Presence"], ["selfstudy", "Self-study"]];
 
 const PRESENCE_BUTTONS = [["attentive", "Attentive"], ["answered", "Answered"], ["good_question", "Good question"], ["helped", "Helped a classmate"]] as const;
 const DISCIPLINE_BUTTONS = [["uniform", "Uniform"], ["phone", "Phone found"], ["disruption", "Disruption"], ["misbehaviour", "Misbehaviour"]] as const;
@@ -16,7 +18,7 @@ const STATUS_CHIP = { present: "c-good", late: "c-warn", absent: "c-bad", excuse
 
 export function ClassMode(props: {
   owner: number; day: string; tiles: Tile[]; quest: { id: number; label: string } | null; isAdmin: boolean; recent: Recent[];
-  values: { plus: number; minus: number; hwBonusMax: number; disc: Record<string, number>; otherMax: number };
+  values: { plus: number; minus: number; hwBonusMax: number; disc: Record<string, number>; otherMax: number; ssVerified: number; ssGreat: number; ssCap: number };
 }) {
   const [mode, setMode] = useState<Mode>("attendance");
   const [open, setOpen] = useState<number | null>(null);
@@ -55,6 +57,15 @@ export function ClassMode(props: {
     send({ type: "presence", student: t.id, action });
     setToast(`${label} ${xp > 0 ? "+" : "−"}${Math.abs(xp)} · ${t.name}`);
   };
+  const selfstudy = (t: Tile, task: Tile["ss"][number], verdict: "verified" | "great" | null) => {
+    patch(t.id, { ss: t.ss.map((x) => (x.id === task.id ? { ...x, verdict } : x)) });
+    send({ type: "selfstudy", task: task.id, verdict });
+    if (verdict) setToast(`${verdict === "great" ? "Great plan" : "Verified"} · ${t.name}`);
+  };
+  const routine = (t: Tile, days: number) => {
+    patch(t.id, { routine: days });
+    send({ type: "routine", student: t.id, days });
+  };
   const deduct = (t: Tile, reason: string, label: string, amount: number, note = "") => {
     patch(t.id, { todayXp: t.todayXp - amount });
     send({ type: "discipline", student: t.id, reason, amount, note });
@@ -70,10 +81,10 @@ export function ClassMode(props: {
     <div className="stack">
       <div className="cm-bar">
         <div className="chips" role="tablist" aria-label="Mode">
-          {(["attendance", "homework", "presence"] as Mode[]).map((m) => (
+          {MODES.map(([m, label]) => (
             <a key={m} href={`#${m}`} role="tab" aria-selected={mode === m} aria-current={mode === m}
               onClick={(e) => { e.preventDefault(); setMode(m); setOpen(null); }}>
-              {m === "attendance" ? "Attendance" : m === "homework" ? "Homework" : "Presence"}
+              {label}
             </a>
           ))}
         </div>
@@ -85,6 +96,7 @@ export function ClassMode(props: {
           ? <>Checking <b>{props.quest.label}</b>. Tap a student to mark it. <b className="num">{checked}/{tiles.length}</b> checked.</>
           : <>No homework was set for today. Post tomorrow&apos;s homework below.</>)}
         {mode === "presence" && <>Only tap the standouts; everyone else counts as normal. Deductions are here too.</>}
+        {mode === "selfstudy" && <>Check notebooks against the tasks students shared with you. Up to {props.values.ssCap} tasks per subject a week earn XP. Ask how many days they followed their routine.</>}
       </p>
       <div className="tiles">
         {tiles.map((t) => {
@@ -102,6 +114,13 @@ export function ClassMode(props: {
                 {mode === "attendance" && <span className={`chip ${STATUS_CHIP[st]}`}>{STATUS_LABEL[st]}{st === "late" && t.arrived ? ` ${t.arrived}` : ""}</span>}
                 {mode !== "attendance" && st === "late" && <span className="chip c-warn">Late{t.arrived ? ` ${t.arrived}` : ""}</span>}
                 {mode !== "attendance" && (st === "absent" || st === "excused") && <span className="chip c-bad">Absent</span>}
+                {mode === "selfstudy" && (() => {
+                  const waiting = t.ss.filter((x) => !x.verdict).length, checked = t.ss.length - waiting;
+                  return <>
+                    <span className={`chip ${waiting ? "c-pink" : ""}`}>{t.ss.length ? `${waiting} to check${checked ? ` · ${checked} done` : ""}` : "No tasks"}</span>
+                    {t.routine != null && <span className="chip c-good">Routine {t.routine}/6</span>}
+                  </>;
+                })()}
                 {mode === "homework" && (t.hw
                   ? <span className={`chip ${t.hw.done ? "c-good" : "c-bad"}`}>{t.hw.done ? `Done ${"★".repeat(t.hw.stars)}${t.hw.bonus ? ` +${t.hw.bonus}` : ""}` : "Not done"}</span>
                   : <span className="chip">Not checked</span>)}
@@ -136,6 +155,27 @@ export function ClassMode(props: {
                   ))}
                 </div>
               )}
+            </>
+          )}
+          {mode === "selfstudy" && (
+            <>
+              {sel.ss.length ? sel.ss.map((task) => (
+                <div key={task.id} className="sheet-task">
+                  <div><b>{task.text}</b>{task.chapter && <span className="small muted"> · {task.chapter}</span>}{task.done && <span className="chip c-good small">Ticked done</span>}</div>
+                  <div className="sheet-row">
+                    <button type="button" className={task.verdict === "verified" ? "btn-p" : "btn-mint"} onClick={() => selfstudy(sel, task, task.verdict === "verified" ? null : "verified")}>
+                      {task.verdict === "verified" ? "Verified ✓" : `Verified +${props.values.ssVerified}`}</button>
+                    <button type="button" className={task.verdict === "great" ? "btn-p" : "btn-yellow"} onClick={() => selfstudy(sel, task, task.verdict === "great" ? null : "great")}>
+                      {task.verdict === "great" ? "Great plan ✓" : `Great plan +${props.values.ssGreat}`}</button>
+                  </div>
+                </div>
+              )) : <p className="small muted">{sel.name.split(" ")[0]} hasn&apos;t shared a task for this subject this week.</p>}
+              <div className="sheet-row">
+                <span className="small muted">Routine followed this week (days)</span>
+                {[0, 1, 2, 3, 4, 5, 6].map((d) => (
+                  <button type="button" key={d} className={`small ${sel.routine === d ? "btn-p" : ""}`} onClick={() => routine(sel, d)}>{d}</button>
+                ))}
+              </div>
             </>
           )}
           {mode === "presence" && <PresenceSheet t={sel} values={props.values} recent={props.recent.filter((r) => r.student === sel.id)}

@@ -335,3 +335,81 @@ create table if not exists client_actions (
   id text primary key,
   done_at timestamptz not null default now()
 );
+
+-- ── Questboard phase 2: syllabus, planner, self-study, badges ──
+
+-- NCERT chapters, loaded each session from db/syllabus-<session>.json. Past quests keep their own text labels.
+create table if not exists syllabus_chapters (
+  id serial primary key,
+  session text not null,
+  grade integer not null check (grade between 6 and 10),
+  subject_id integer not null references subjects(id),
+  book text not null,
+  unit text not null default '',
+  no integer not null,
+  name text not null,
+  sort integer not null default 0,
+  unique (session, grade, subject_id, book, no)
+);
+create index if not exists syllabus_grade_idx on syllabus_chapters (grade, subject_id, sort);
+
+-- A chapter ticked as taught for one class.
+create table if not exists taught_marks (
+  batch_id integer not null references batches(id) on delete cascade,
+  chapter_id integer not null references syllabus_chapters(id) on delete cascade,
+  teacher_id integer references users(id),
+  at timestamptz not null default now(),
+  primary key (batch_id, chapter_id)
+);
+
+alter table quests add column if not exists chapter_id integer references syllabus_chapters(id) on delete set null;
+
+-- A student's weekly routine: study blocks by weekday (0 = Monday).
+create table if not exists routine_blocks (
+  id serial primary key,
+  student_id integer not null references users(id) on delete cascade,
+  weekday integer not null check (weekday between 0 and 6),
+  starts text not null,
+  ends text not null,
+  subject_id integer references subjects(id),
+  note text not null default ''
+);
+create index if not exists routine_student_idx on routine_blocks (student_id, weekday, starts);
+
+-- Self-study tasks a student plans; shared ones show up for that subject's teacher in class mode.
+create table if not exists study_tasks (
+  id serial primary key,
+  student_id integer not null references users(id) on delete cascade,
+  subject_id integer not null references subjects(id),
+  chapter_id integer references syllabus_chapters(id) on delete set null,
+  text text not null,
+  shared boolean not null default true,
+  done_at timestamptz,
+  verdict text check (verdict in ('verified','great')),
+  verified_by integer references users(id),
+  verified_at timestamptz,
+  comment text not null default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists study_tasks_student_idx on study_tasks (student_id, created_at desc);
+
+alter table points add column if not exists task_id integer references study_tasks(id) on delete set null;
+alter table points add column if not exists subject_id integer references subjects(id);
+
+-- Days a student followed their own routine, confirmed by a teacher at the weekly self-study check.
+create table if not exists routine_checks (
+  student_id integer not null references users(id) on delete cascade,
+  week_start date not null,
+  days integer not null check (days between 0 and 6),
+  checked_by integer references users(id),
+  at timestamptz not null default now(),
+  primary key (student_id, week_start)
+);
+
+-- Badges that depend on a moment in time (Podium Finish) are stored when the week is settled; the rest are computed.
+create table if not exists badge_awards (
+  student_id integer not null references users(id) on delete cascade,
+  badge text not null,
+  earned_on date not null,
+  primary key (student_id, badge)
+);

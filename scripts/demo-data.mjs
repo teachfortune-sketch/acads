@@ -100,5 +100,20 @@ for (const [i, day] of days.entries()) {
   }
 }
 
+// Phase 2: taught chapters, a routine and a few self-study tasks for Class 9.
+await sql`insert into taught_marks (batch_id, chapter_id, teacher_id)
+  select ${batch["Class 9"]}, c.id, ${admin.id} from syllabus_chapters c
+  where c.grade = 9 and c.sort in (select sort from syllabus_chapters c2 where c2.grade = 9 and c2.subject_id = c.subject_id order by sort limit 3)
+  on conflict do nothing`;
+for (const [i, k] of class9.entries()) {
+  const [has] = await sql`select 1 from routine_blocks where student_id = ${k.sid}`;
+  if (has) continue;
+  for (const wd of [0, 2, 4]) await sql`insert into routine_blocks (student_id, weekday, starts, ends, subject_id) values (${k.sid}, ${wd}, '17:00', '18:00', ${subj.Maths})`;
+  await sql`insert into routine_blocks (student_id, weekday, starts, ends, subject_id) values (${k.sid}, 1, '18:00', '19:00', ${subj.Science})`;
+  const [ch] = await sql`select id from syllabus_chapters where grade = 9 and subject_id = ${subj.Maths} order by sort limit 1 offset ${i % 3}`;
+  await sql`insert into study_tasks (student_id, subject_id, chapter_id, text, shared, done_at)
+    values (${k.sid}, ${subj.Maths}, ${ch?.id ?? null}, 'Revise the exercise and write the key formulas', true, now()),
+           (${k.sid}, ${subj.Science}, null, 'Read the chapter and make a one-page summary', true, null)`;
+}
 console.log('Demo data added. Logins: aarav, diya, kabir, meera, rohan (and <name>.parent), hindi.teacher, english.teacher, reception. Password: demo123');
 await sql.end();

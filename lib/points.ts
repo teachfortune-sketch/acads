@@ -92,13 +92,14 @@ export function istParts(at: Date) {
 
 type NewPoint = {
   student: number; pillar: Pillar; action: string; xp: number; reason: string; note?: string;
-  staff: number; quest?: number | null; day: string; at?: Date;
+  staff: number; quest?: number | null; day: string; at?: Date; task?: number | null; subject?: number | null;
 };
 
 async function addPoint(db: Db, p: NewPoint) {
   const [row] = await db`
-    insert into points (student_id, pillar, action, xp, reason, note, staff_id, quest_id, day, created_at)
-    values (${p.student}, ${p.pillar}, ${p.action}, ${p.xp}, ${p.reason}, ${p.note ?? ""}, ${p.staff}, ${p.quest ?? null}, ${p.day}, ${p.at ?? new Date()})
+    insert into points (student_id, pillar, action, xp, reason, note, staff_id, quest_id, day, created_at, task_id, subject_id)
+    values (${p.student}, ${p.pillar}, ${p.action}, ${p.xp}, ${p.reason}, ${p.note ?? ""}, ${p.staff}, ${p.quest ?? null}, ${p.day}, ${p.at ?? new Date()},
+      ${p.task ?? null}, ${p.subject ?? null})
     returning id`;
   return row.id as number;
 }
@@ -107,8 +108,9 @@ async function reverseRow(db: Db, id: number, staff: number, note: string) {
   const [orig] = await db`select * from points where id = ${id} and reversed_by_id is null and reverses_id is null for update`;
   if (!orig) return false;
   const [rev] = await db`
-    insert into points (student_id, pillar, action, xp, reason, note, staff_id, quest_id, day, reverses_id)
-    values (${orig.student_id}, ${orig.pillar}, 'reversal', ${-orig.xp}, ${"Reversed: " + orig.reason}, ${note}, ${staff}, ${orig.quest_id}, ${orig.day}, ${orig.id})
+    insert into points (student_id, pillar, action, xp, reason, note, staff_id, quest_id, day, reverses_id, task_id, subject_id)
+    values (${orig.student_id}, ${orig.pillar}, 'reversal', ${-orig.xp}, ${"Reversed: " + orig.reason}, ${note}, ${staff}, ${orig.quest_id}, ${orig.day}, ${orig.id},
+      ${orig.task_id}, ${orig.subject_id})
     returning id`;
   await db`update points set reversed_by_id = ${rev.id} where id = ${orig.id}`;
   return true;
@@ -324,12 +326,12 @@ async function settleStreakOn(db: Db, student: number, kind: "attendance" | "hom
 // ── Clean weeks ──
 // A week (Mon–Sun) with no deductions gives back half of the previous week's deductions.
 // Settled lazily, once per finished week, the first time anyone loads points after it ends.
-function mondayOf(day: string) {
+export function mondayOf(day: string) {
   const d = new Date(day + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
   return d.toISOString().slice(0, 10);
 }
-const addDays = (day: string, n: number) => {
+export const addDays = (day: string, n: number) => {
   const d = new Date(day + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
@@ -362,10 +364,156 @@ export async function settleCleanWeeks() {
           select 1 from points p where p.student_id = d.student_id and p.pillar = 'discipline' and p.xp < 0
             and p.reversed_by_id is null and p.reverses_id is null and p.day >= ${week} and p.day < ${next})
           and not exists (select 1 from points c where c.student_id = d.student_id and c.action = 'clean_week' and c.day = ${addDays(week, 5)}::date)`;
+      // Podium Finish: top 3 of each class on net XP when the week ends.
+      await tx`
+        insert into badge_awards (student_id, badge, earned_on)
+        select id, 'podium', ${addDays(week, 5)}::date from (
+          select u.id, rank() over (partition by st.batch_id order by coalesce(sum(p.xp), 0) desc) as r, coalesce(sum(p.xp), 0) as net
+          from students st join users u on u.id = st.user_id and u.active and u.status = 'approved'
+          left join points p on p.student_id = u.id and p.day >= (select coalesce((select value from point_rules where key = 'term_start'), ${String(RULES.term_start.def)}))::date
+            and p.day < ${next}
+          group by u.id, st.batch_id) t
+        where r <= 3 and net > 0
+        on conflict do nothing`;
       week = next;
     }
     await tx`insert into app_state values ('clean_weeks_through', ${week}) on conflict (key) do update set value = excluded.value`;
   });
+}
+
+// ── Self-study ──
+// A teacher checks a student's notebook against a shared task: Verified or Great plan. Only a capped number of tasks
+// per subject per week earn XP; later ones are still marked, with 0 XP, so the student sees they were seen.
+export async function verifyTask(db: Db, v: { task: number; verdict: "verified" | "great" | null; comment?: string; actor: Actor; at?: Date }) {
+  const rules = await getRules(db);
+  const [t] = await db`select t.id, t.student_id, t.subject_id, t.text, t.shared, sub.name as subject from study_tasks t
+    join subjects sub on sub.id = t.subject_id where t.id = ${v.task} for update`;
+  if (!t || !t.shared) throw new PointsError("That task was not found or is not shared.");
+  await studentBatch(db, t.student_id);
+  if (v.actor.role !== "admin") {
+    const [ok] = await db`select 1 from teacher_subjects where teacher_id = ${v.actor.uid} and subject_id = ${t.subject_id}`;
+    if (!ok) throw new PointsError(`Only a ${t.subject} teacher can check this task.`);
+  }
+  const at = v.at ?? new Date();
+  const day = istParts(at).day;
+  await db`update study_tasks set verdict = ${v.verdict}, verified_by = ${v.verdict ? v.actor.uid : null},
+    verified_at = ${v.verdict ? at : null}, comment = ${(v.comment ?? "").trim().slice(0, 200)} where id = ${t.id}`;
+  const existing = await db`select id, action from points where task_id = ${t.id} and pillar = 'selfstudy' and ${standing(db)}`;
+  const action = v.verdict === "great" ? "ss_great" : v.verdict === "verified" ? "ss_verified" : null;
+  if (existing.length === 1 && existing[0].action === action) return;
+  for (const e of existing) await reverseRow(db, e.id, v.actor.uid, "Self-study check changed");
+  if (!action) return;
+  const monday = mondayOf(day);
+  const [used] = await db`select count(*)::int as n from points where student_id = ${t.student_id} and subject_id = ${t.subject_id}
+    and pillar = 'selfstudy' and action in ('ss_verified','ss_great') and xp > 0 and day >= ${monday} and day < ${addDays(monday, 7)} and ${standing(db)}`;
+  const capped = used.n >= Number(rules.ss_cap_week);
+  const xp = capped ? 0 : action === "ss_great" ? Number(rules.ss_great) : Number(rules.ss_verified);
+  const what = action === "ss_great" ? "Great plan" : "Self-study verified";
+  await addPoint(db, {
+    student: t.student_id, pillar: "selfstudy", action, xp, staff: v.actor.uid, day, at, task: t.id, subject: t.subject_id,
+    reason: `${what}: ${t.subject}, ${String(t.text).slice(0, 80)}${capped ? ` (weekly limit of ${rules.ss_cap_week} reached)` : ""}`, note: v.comment?.trim().slice(0, 140),
+  });
+}
+
+// Routine streak: the teacher confirms at the weekly check how many school days (Mon–Sat) the student followed their routine.
+// Days carry over from a full week into the next, so the streak is the run of followed days ending at the latest check.
+export async function setRoutine(db: Db, r: { student: number; days: number; actor: Actor; at?: Date }) {
+  const rules = await getRules(db);
+  await studentBatch(db, r.student);
+  const days = Math.max(0, Math.min(6, Math.round(r.days)));
+  const week = mondayOf(istParts(r.at ?? new Date()).day);
+  await db`insert into routine_checks (student_id, week_start, days, checked_by) values (${r.student}, ${week}, ${days}, ${r.actor.uid})
+    on conflict (student_id, week_start) do update set days = excluded.days, checked_by = excluded.checked_by, at = now()`;
+  await settleRoutineStreak(db, r.student, week, r.actor.uid, rules);
+}
+
+export async function routineStreak(db: Db, student: number, upTo = todayIST()) {
+  const weeks = await db`select week_start::text as w, days from routine_checks where student_id = ${student} and week_start <= ${upTo}
+    order by week_start desc limit 60`;
+  let n = 0, expect: string | null = null;
+  for (const wk of weeks) {
+    if (expect && wk.w !== expect) break;
+    n += wk.days;
+    if (wk.days < 6) break;
+    expect = addDays(wk.w, -7);
+  }
+  return n;
+}
+
+// Bonus rows sit on the Saturday of the week a step was crossed; re-check that week and every later one.
+async function settleRoutineStreak(db: Db, student: number, fromWeek: string, staff: number, rules: Rules) {
+  const later = await db`select week_start::text as w from routine_checks where student_id = ${student} and week_start >= ${fromWeek} order by 1`;
+  for (const { w } of later) {
+    const day = addDays(w, 5);
+    const now = await routineStreak(db, student, w);
+    const [wk] = await db`select days from routine_checks where student_id = ${student} and week_start = ${w}`;
+    const before = now - wk.days;
+    for (const step of STREAK_STEPS) {
+      const action = `streak_routine_${step}`;
+      const [have] = await db`select id from points where student_id = ${student} and action = ${action} and day = ${day} and ${standing(db)}`;
+      const crossed = before < step && now >= step;
+      if (crossed && !have)
+        await addPoint(db, { student, pillar: "selfstudy", action, xp: Number(rules[`streak_${step}` as RuleKey]), reason: `${step}-day routine streak bonus`, staff, day });
+      else if (!crossed && have) await reverseRow(db, have.id, staff, "Routine check changed");
+    }
+  }
+}
+
+// ── Badges ──
+export const BADGES = [
+  { key: "homework_hero", name: "Homework Hero", seal: "HW10", color: "var(--sky)", desc: "10-day homework streak" },
+  { key: "always_there", name: "Always There", seal: "30", color: "var(--mint)", desc: "30-day attendance streak" },
+  { key: "hand_raiser", name: "Hand Raiser", seal: "?!", color: "var(--yellow)", desc: "10 “answered” points in a term" },
+  { key: "class_star", name: "Class Star", seal: "★3", color: "var(--pink)", desc: "3 excellent-work bonuses" },
+  { key: "self_starter", name: "Self-Starter", seal: "SS5", color: "var(--pink)", desc: "5 verified self-study tasks" },
+  { key: "clean_record", name: "Clean Record", seal: "4W", color: "var(--coral)", desc: "4 clean weeks in a row" },
+  { key: "scholar", name: "Scholar", seal: "LV5", color: "var(--yellow)", desc: "Reach level 5" },
+  { key: "podium", name: "Podium Finish", seal: "TOP3", color: "var(--sky)", desc: "Top 3 in class at the end of a week" },
+] as const;
+export type BadgeState = { key: string; name: string; seal: string; color: string; desc: string; have: number; need: number; earned: boolean };
+
+export async function studentBadges(student: number, earnedXp: number): Promise<BadgeState[]> {
+  const rules = await getRules();
+  const term = String(rules.term_start);
+  const [c] = await sql`
+    select
+      exists (select 1 from points where student_id = ${student} and action = 'streak_homework_10' and ${standing(sql)}) as hw10,
+      exists (select 1 from points where student_id = ${student} and action = 'streak_attendance_30' and ${standing(sql)}) as att30,
+      (select count(*)::int from points where student_id = ${student} and action = 'answered' and day >= ${term}::date and ${standing(sql)}) as answered,
+      (select count(*)::int from points where student_id = ${student} and action = 'hw_bonus' and ${standing(sql)}) as bonus,
+      (select count(*)::int from points where student_id = ${student} and action in ('ss_verified','ss_great') and ${standing(sql)}) as verified,
+      exists (select 1 from badge_awards where student_id = ${student} and badge = 'podium') as podium`;
+  const hw = c.hw10 ? 10 : await homeworkStreak(sql, student);
+  const att = c.att30 ? 30 : await attendanceStreak(sql, student);
+  const clean = await cleanWeekRun(student);
+  const level = levelOf(earnedXp);
+  const have: Record<string, [number, number]> = {
+    homework_hero: [hw, 10], always_there: [att, 30], hand_raiser: [c.answered, 10], class_star: [c.bonus, 3],
+    self_starter: [c.verified, 5], clean_record: [clean, 4], scholar: [level, 5], podium: [c.podium ? 1 : 0, 1],
+  };
+  return BADGES.map((b) => {
+    const [h, need] = have[b.key];
+    return { ...b, have: Math.min(h, need), need, earned: h >= need };
+  });
+}
+
+// Longest run of finished weeks (Mon–Sat) with no standing deductions, among weeks the student attended, this term.
+async function cleanWeekRun(student: number) {
+  const rules = await getRules();
+  const weeks = await sql`
+    select date_trunc('week', d.day)::date::text as w,
+      bool_or(exists (select 1 from points p where p.student_id = ${student} and p.pillar = 'discipline' and p.xp < 0
+        and p.reversed_by_id is null and p.reverses_id is null and date_trunc('week', p.day) = date_trunc('week', d.day))) as dirty
+    from day_attendance d
+    where d.student_id = ${student} and d.day >= ${String(rules.term_start)}::date and d.day < ${mondayOf(todayIST())}
+    group by 1 order by 1`;
+  let best = 0, run = 0, prev: string | null = null;
+  for (const wk of weeks) {
+    run = wk.dirty ? 0 : prev && addDays(prev, 7) === wk.w ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = wk.w;
+  }
+  return best;
 }
 
 // ── Reading points ──────────────────────────────────────────────────────────

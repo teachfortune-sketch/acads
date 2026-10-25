@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 import { currentUser, STAFF } from "@/lib/auth";
 import {
   addDiscipline, addPresence, AttStatus, checkHomework, DISCIPLINE, DisciplineReason, istParts, markLate, PointsError,
-  PRESENCE, PresenceAction, setAttendance, undoLate, undoPoint,
+  PRESENCE, PresenceAction, setAttendance, setRoutine, undoLate, undoPoint, verifyTask,
 } from "@/lib/points";
 
 // Class mode and the reception desk send their taps here in batches. Each action has an id from the device,
@@ -16,11 +16,14 @@ type Action =
   | { id: string; at: string; type: "presence"; student: number; action: PresenceAction }
   | { id: string; at: string; type: "discipline"; student: number; reason: DisciplineReason; amount?: number; note?: string }
   | { id: string; at: string; type: "undo"; point: number }
-  | { id: string; at: string; type: "unlate"; student: number };
+  | { id: string; at: string; type: "unlate"; student: number }
+  | { id: string; at: string; type: "selfstudy"; task: number; verdict: "verified" | "great" | null; comment?: string }
+  | { id: string; at: string; type: "routine"; student: number; days: number };
 
 const ALLOWED: Record<Action["type"], string[]> = {
   attendance: ["admin", "teacher"], homework: ["admin", "teacher"], presence: ["admin", "teacher"],
   late: ["admin", "reception"], unlate: ["admin", "reception"], discipline: STAFF, undo: STAFF,
+  selfstudy: ["admin", "teacher"], routine: ["admin", "teacher"],
 };
 
 // Taps queued offline keep their own time, but never from the future or more than 3 days back.
@@ -62,6 +65,11 @@ export async function POST(req: Request) {
             return addDiscipline(tx, { student: Number(a.student), reason: a.reason, amount: Number(a.amount), note: String(a.note ?? ""), actor, at });
           case "undo":
             return undoPoint(tx, Number(a.point), actor, "");
+          case "selfstudy":
+            if (![null, "verified", "great"].includes(a.verdict)) throw new PointsError("Unknown check.");
+            return verifyTask(tx, { task: Number(a.task), verdict: a.verdict, comment: String(a.comment ?? ""), actor, at });
+          case "routine":
+            return setRoutine(tx, { student: Number(a.student), days: Number(a.days), actor, at });
           case "unlate":
             return undoLate(tx, Number(a.student), actor, istParts(at).day);
         }
