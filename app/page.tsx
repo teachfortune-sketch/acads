@@ -7,7 +7,7 @@ import "./landing.css";
 export const metadata: Metadata = {
   title: "Acads Coaching Institute, Saket Nagar, Varanasi | Classes 6 to 10",
   description:
-    "Coaching for Classes 6 to 10 in Maths, Science, Social Science, English and Hindi in Saket Nagar, Varanasi. Every class recorded, every student followed up. Discover. Learn. Excel.",
+    "Coaching for Classes 6 to 10 in Maths, Science, Social Science, English and Hindi in Saket Nagar, Varanasi. Discover. Learn. Excel.",
 };
 
 const NAV = [
@@ -73,10 +73,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <div className="lp-hero-copy">
               <span className="lp-eyebrow">Classes 6 to 10 · Saket Nagar, Varanasi</span>
               <h1><span>Discover.</span><span>Learn.</span><span className="hl">Excel.</span></h1>
-              <p className="lp-lead">
-                Acads is a coaching institute where every class is recorded and every student is followed up. Parents see attendance,
-                homework and test results on their phone, and students always know what to revise next.
-              </p>
               <div className="lp-cta">
                 <a href="#admissions" className="lp-btn sun">Book a demo class</a>
                 <Link href={login.href} className="lp-btn alt">{session ? "Go to my dashboard" : "Student and parent login"}</Link>
@@ -86,7 +82,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               </div>
             </div>
             <div className="lp-hero-logo">
-              <img src="/acads-logo.png" alt="Acads Coaching Institute: Discover. Learn. Excel." width={593} height={708} />
+              <div className="tile"><img src="/acads-logo.png" alt="Acads Coaching Institute: Discover. Learn. Excel." width={593} height={708} /></div>
             </div>
           </div>
         </section>
@@ -129,7 +125,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           </div>
         </section>
 
-        <section className="lp-sec dark" id="method">
+        <section className="lp-sec sun" id="method">
           <div className="lp-in">
             <div className="lp-head">
               <span className="lp-eyebrow">Our method</span>
@@ -149,7 +145,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               <h2>Built for focused study</h2>
             </div>
             <div className="lp-fac">
-              <div><i></i><h3>Three classrooms</h3><p>Batches for different classes can run side by side, each in its own room.</p></div>
+              <div><i></i><h3>Interactive classes</h3><p>Students ask questions, discuss ideas and solve problems together in class.</p></div>
               <div><i></i><h3>Numbered worksheets</h3><p>Numbered practice sheets for each chapter, given to the whole batch and checked by the teacher.</p></div>
               <div><i></i><h3>Student and parent portal</h3><p>Every student and parent gets their own login to see classes, homework, marks and notices.</p></div>
               <div><i></i><h3>Missed-class notes</h3><p>If a student is absent, the class notes and homework are waiting for them online the same day.</p></div>
@@ -161,7 +157,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           <div className="lp-in lp-two">
             <div className="lp-head">
               <span className="lp-eyebrow">Student progress</span>
-              <h2>Parents see progress, not just marks</h2>
+              <h2>See your progress, not your marks</h2>
               <p className="lp-lead">Each subject is marked from the student&apos;s own test scores, and the weak topics turn into a clear revision list.</p>
               <ul className="lp-list">
                 <li><b>Strong</b> means 80% or more in tests.</li>
@@ -176,7 +172,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               {([["Maths", 86, "Strong", "p-good"], ["Science", 72, "On track", "p-ok"], ["Social", 54, "Needs help", "p-help"], ["English", 81, "Strong", "p-good"]] as const).map(([s, v, l, c]) => (
                 <div className="lp-row" key={s}>
                   <span>{s}</span>
-                  <div className="lp-bar"><span style={{ width: `${v}%`, background: c === "p-good" ? "#2f8f2f" : c === "p-ok" ? "#d9a514" : "#c8483d" }} /></div>
+                  <div className="lp-bar"><span style={{ width: `${v}%`, background: c === "p-good" ? "var(--mint)" : c === "p-ok" ? "var(--sky)" : "var(--coral)" }} /></div>
                   <span className={`lp-pill ${c}`}>{l}</span>
                 </div>
               ))}
@@ -185,7 +181,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           </div>
         </section>
 
-        <section className="lp-sec" id="admissions">
+        <section className="lp-sec pink" id="admissions">
           <div className="lp-in lp-two">
             <div className="lp-head">
               <span className="lp-eyebrow">Admissions open</span>
@@ -216,7 +212,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           </div>
         </section>
 
-        <section className="lp-sec dark" id="contact">
+        <section className="lp-sec sky" id="contact">
           <div className="lp-in">
             <div className="lp-head">
               <span className="lp-eyebrow">Contact</span>
