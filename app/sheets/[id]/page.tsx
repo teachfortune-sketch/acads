@@ -27,7 +27,7 @@ export default async function SheetPage({ params, searchParams }: { params: Prom
           order by (ss.student_id = ${Number(sp.child) || 0}) desc, u.name limit 1`
       : [];
   const canTick = s.role === "admin" || (s.role === "teacher" && (!sh.subject_id || (await canTeach(s, sh.subject_id))));
-  if (!teaching && !mine) redirect("/");
+  if (!teaching && !mine) redirect("/app");
   const rows = teaching
     ? await sql`select ss.student_id, ss.done, u.name from sheet_students ss join users u on u.id = ss.student_id where ss.sheet_id = ${sh.id} order by u.name`
     : [];

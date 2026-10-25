@@ -32,3 +32,5 @@ export function withMsg(path: string, key: "ok" | "err", text: string) {
 }
 
 export const USERNAME_RE = /^[a-z0-9._]{3,30}$/;
+
+export const ENQUIRY_STATUSES = ["New", "Contacted", "Demo scheduled", "Demo attended", "Admitted", "Lost"] as const;
