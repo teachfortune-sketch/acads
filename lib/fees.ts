@@ -10,6 +10,21 @@ export type Entry = {
 export type Totals = { billed: number; paid: number; concession: number; outstanding: number; overdue: number; nextDue: string | null };
 
 // Credits (payments and concessions still standing) pay off installments oldest first.
+// Installments must be sorted by due date. Fills in covered and state on each one.
+function applyCredits(inst: Pick<Installment, "due_on" | "amount" | "covered" | "state">[], credit: number, today: string) {
+  let billed = 0, overdue = 0, nextDue: string | null = null;
+  for (const i of inst) {
+    billed += i.amount;
+    i.covered = Math.min(i.amount, credit);
+    credit -= i.covered;
+    const left = i.amount - i.covered;
+    if (left === 0) i.state = "Paid";
+    else if (i.due_on < today) { i.state = "Overdue"; overdue += left; }
+    else { i.state = i.covered ? "Part paid" : "Due"; nextDue ??= i.due_on; }
+  }
+  return { billed, overdue, nextDue };
+}
+
 export async function getLedger(studentId: number) {
   const today = todayIST();
   const [plans, inst, pays, cons] = await Promise.all([
@@ -34,44 +49,31 @@ export async function getLedger(studentId: number) {
   const concession = entries.filter((e) => standing(e) && e.kind === "concession").reduce((a, e) => a + e.amount, 0);
 
   const live = new Set(plans.filter((p) => !p.cancelled_at).map((p) => p.id as number));
-  let credit = paid + concession;
-  let billed = 0, overdue = 0, nextDue: string | null = null;
-  for (const i of inst) {
-    if (!live.has(i.plan_id)) { i.covered = 0; i.state = "Due"; continue; }
-    billed += i.amount;
-    i.covered = Math.min(i.amount, credit);
-    credit -= i.covered;
-    const left = i.amount - i.covered;
-    if (left === 0) i.state = "Paid";
-    else if (i.due_on < today) { i.state = "Overdue"; overdue += left; }
-    else { i.state = i.covered ? "Part paid" : "Due"; nextDue ??= i.due_on; }
-  }
+  for (const i of inst) if (!live.has(i.plan_id)) Object.assign(i, { covered: 0, state: "Due" });
+  const { billed, overdue, nextDue } = applyCredits(inst.filter((i) => live.has(i.plan_id)), paid + concession, today);
   const totals: Totals = { billed, paid, concession, outstanding: billed - paid - concession, overdue, nextDue };
   const planList: Plan[] = plans.map((p) => ({ ...(p as Omit<Plan, "installments">), installments: inst.filter((i) => i.plan_id === p.id) }));
   return { plans: planList, entries, totals };
 }
 
-export type FeeRow = { id: number; name: string; batch: string; billed: number; paid: number; concession: number; overdue_billed: number; next_due: string | null };
+export type FeeRow = { id: number; name: string; batch: string; paid: number; concession: number; inst: { due_on: string; amount: number }[] };
 
-// One row per active student with a fee plan. "Overdue" = what was due before today minus all credits.
+// One row per active student, with totals worked out the same way as getLedger.
 export async function feeSummary(batchId: number | null) {
   const today = todayIST();
   const rows = await sql<FeeRow[]>`
     select u.id, u.name, b.name as batch,
-      coalesce(i.billed, 0)::int as billed, coalesce(i.overdue_billed, 0)::int as overdue_billed, i.next_due::text,
+      coalesce((select json_agg(json_build_object('due_on', fi.due_on, 'amount', fi.amount) order by fi.due_on, fi.id)
+        from fee_installments fi join fee_plans fp on fp.id = fi.plan_id and fp.cancelled_at is null
+        where fp.student_id = u.id), '[]') as inst,
       coalesce((select sum(amount) from fee_payments where student_id = u.id and reversed_at is null), 0)::int as paid,
       coalesce((select sum(amount) from fee_concessions where student_id = u.id and reversed_at is null), 0)::int as concession
     from students st join users u on u.id = st.user_id and u.active join batches b on b.id = st.batch_id
-    left join lateral (
-      select sum(fi.amount) as billed, sum(fi.amount) filter (where fi.due_on < ${today}) as overdue_billed,
-        min(fi.due_on) filter (where fi.due_on >= ${today}) as next_due
-      from fee_installments fi join fee_plans fp on fp.id = fi.plan_id and fp.cancelled_at is null
-      where fp.student_id = u.id
-    ) i on true
     ${batchId ? sql`where st.batch_id = ${batchId}` : sql``}
     order by b.sort, u.name`;
-  return rows.map((r) => {
+  return rows.map(({ inst, ...r }) => {
     const credit = r.paid + r.concession;
-    return { ...r, outstanding: r.billed - credit, overdue: Math.max(0, r.overdue_billed - credit) };
+    const t = applyCredits(inst.map((i) => ({ ...i, covered: 0, state: "Due" as const })), credit, today);
+    return { ...r, billed: t.billed, outstanding: t.billed - credit, overdue: t.overdue, next_due: t.nextDue };
   });
 }
