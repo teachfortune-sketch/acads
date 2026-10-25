@@ -1,5 +1,6 @@
 // Creates the tables, the Class 6–10 batches, the five subjects and the first admin login.
 // Usage: DATABASE_URL=... ADMIN_PASSWORD=... node scripts/setup-db.mjs  (admin username defaults to "rahul")
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
@@ -10,7 +11,27 @@ try {
 } catch {}
 
 const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1, onnotice: () => {} });
-await sql.unsafe(readFileSync(new URL("../db/schema.sql", import.meta.url), "utf8"));
+// Previews and production share one database. The schema's ALTERs lock whole tables, so they only run when schema.sql
+// has changed, and give up after a few seconds instead of queueing every page request behind them.
+const schema = readFileSync(new URL("../db/schema.sql", import.meta.url), "utf8");
+const hash = createHash("sha256").update(schema).digest("hex");
+const [{ ready }] = await sql`select to_regclass('app_state') is not null as ready`;
+const [done] = ready ? await sql`select value from app_state where key = 'schema_hash'` : [];
+if (done?.value === hash) console.log("Schema is up to date.");
+else {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await sql.unsafe(`set local lock_timeout = '5s'; set local statement_timeout = '60s';\n${schema}`);
+      break;
+    } catch (e) {
+      if (attempt >= 4 || !["55P03", "57014", "40P01"].includes(e.code)) throw e;
+      console.log(`Schema change waited too long for a lock (${e.code}); trying again.`);
+      await new Promise((r) => setTimeout(r, 5000 * attempt));
+    }
+  }
+  await sql`insert into app_state values ('schema_hash', ${hash}) on conflict (key) do update set value = excluded.value`;
+  console.log("Schema updated.");
+}
 
 const batches = ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10"];
 for (const [i, name] of batches.entries())
@@ -45,9 +66,11 @@ for (const file of readdirSync(new URL("../db/", import.meta.url)).filter((f) =>
   const subjectIds = Object.fromEntries((await sql`select id, name from subjects`).map((s) => [s.name, s.id]));
   const values = rows.filter((r) => subjectIds[r.subject])
     .map((r, i) => ({ session, grade: r.grade, subject_id: subjectIds[r.subject], book: r.book, unit: r.unit, no: r.no, name: r.name, sort: i }));
-  await sql`insert into syllabus_chapters ${sql(values)}
-    on conflict (session, grade, subject_id, book, no) do update set unit = excluded.unit, name = excluded.name, sort = excluded.sort`;
-  console.log(`Syllabus ${session}: ${rows.length} chapters.`);
+  if (values.length)
+    await sql`insert into syllabus_chapters ${sql(values)}
+      on conflict (session, grade, subject_id, book, no) do update set unit = excluded.unit, name = excluded.name, sort = excluded.sort
+      where (syllabus_chapters.unit, syllabus_chapters.name, syllabus_chapters.sort) is distinct from (excluded.unit, excluded.name, excluded.sort)`;
+  console.log(`Syllabus ${session}: ${values.length} of ${rows.length} chapters.`);
 }
 // Sync worksheets from the sheets/ folder and assign each to its batch.
 const sheetDir = new URL("../sheets/", import.meta.url);
