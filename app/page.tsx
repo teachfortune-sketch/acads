@@ -41,7 +41,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const session = await readSession();
   const login = session ? { href: "/app", label: "My dashboard" } : { href: "/login", label: "Student login" };
   const pickedClass = ["6", "7", "8", "9", "10"].includes(sp.class ?? "") ? sp.class : "";
-  const source = (sp.src ?? (pickedClass ? `class-${pickedClass}` : "website")).replace(/[^a-z0-9-]/gi, "").slice(0, 40) || "website";
+  const campaign = (sp.src ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 40);
+  const source = campaign || (pickedClass ? `class-${pickedClass}` : "website");
+  const srcParam = campaign ? `&src=${campaign}` : "";
 
   return (
     <div className="lp">
@@ -120,7 +122,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
                 <div className="lp-class" key={c.n}>
                   <div className="num">{c.n}<small>Class</small></div>
                   <p>{c.text}</p>
-                  <a href={`/?class=${c.n}#admissions`}>Enquire for Class {c.n} →</a>
+                  <a href={`/?class=${c.n}${srcParam}#admissions`}>Enquire for Class {c.n} →</a>
                 </div>
               ))}
             </div>
