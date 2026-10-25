@@ -7,7 +7,7 @@ import "./landing.css";
 export const metadata: Metadata = {
   title: "Acads Coaching Institute, Saket Nagar, Varanasi | Classes 6 to 10",
   description:
-    "Coaching for Classes 6 to 10 in Maths, Science, Social Science, English and Hindi in Saket Nagar, Varanasi. Every class recorded, every student followed up. Discover. Learn. Excel.",
+    "Coaching for Classes 6 to 10 in Maths, Science, Social Science, English and Hindi in Saket Nagar, Varanasi. Discover. Learn. Excel.",
 };
 
 const NAV = [
