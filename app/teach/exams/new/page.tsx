@@ -1,4 +1,5 @@
 import { requireRole, TEACHING } from "@/lib/auth";
+import { sql } from "@/lib/db";
 import { batchStudents, getBatches, teachableSubjects } from "@/lib/queries";
 import { todayIST } from "@/lib/util";
 import { Shell } from "@/components/Shell";
@@ -12,6 +13,9 @@ export default async function NewExamPage({ searchParams }: { searchParams: Prom
   const [batches, subjects] = await Promise.all([getBatches(), teachableSubjects(s)]);
   const batch = batches.find((b) => b.id === Number(sp.batch));
   const students = batch ? await batchStudents(batch.id) : [];
+  const [plan] = batch && sp.plan
+    ? await sql`select id, subject_id, planned_on::text as date, topic from schedule where id = ${Number(sp.plan) || 0} and batch_id = ${batch.id} and kind = 'test'`
+    : [];
   return (
     <Shell s={s} active="/teach/exams">
       <div><h1>Enter test marks</h1><p className="muted">Leave a box empty if the student was absent for the test.</p></div>
@@ -24,15 +28,16 @@ export default async function NewExamPage({ searchParams }: { searchParams: Prom
         <div className="panel">
           <form action={createExam} className="form">
             <input type="hidden" name="batch_id" value={batch.id} />
+            {plan && <input type="hidden" name="plan_id" value={plan.id} />}
             <label>Subject
-              <select id="subject_id" name="subject_id" required>
+              <select id="subject_id" name="subject_id" defaultValue={plan?.subject_id} required>
                 {subjects.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select>
             </label>
             <label>Test name<input id="title" name="title" defaultValue="Weekly test" required /></label>
-            <label>Date<input id="held_on" name="held_on" type="date" defaultValue={todayIST()} required /></label>
+            <label>Date<input id="held_on" name="held_on" type="date" defaultValue={plan?.date ?? todayIST()} required /></label>
             <label>Total marks<input id="max_marks" name="max_marks" type="number" min="1" step="any" defaultValue="25" required /></label>
-            <label className="full">Topics in this test<input id="topic" name="topic" placeholder="e.g. Integers, fractions" /></label>
+            <label className="full">Topics in this test<input id="topic" name="topic" defaultValue={plan?.topic} placeholder="e.g. Integers, fractions" /></label>
             <div className="full checks">
               {students.map((st) => (
                 <label key={st.id} style={{ justifyContent: "space-between" }}>

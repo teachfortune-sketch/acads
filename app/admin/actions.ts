@@ -140,3 +140,21 @@ export async function deleteNotice(fd: FormData) {
   revalidatePath("/", "layout");
   redirect(withMsg("/admin/notices", "ok", "Notice deleted."));
 }
+
+export async function addBehaviourNote(fd: FormData) {
+  const s = await requireRole("admin");
+  const studentId = int(fd, "student_id");
+  const back = `/students/${studentId}`;
+  const note = str(fd, "note");
+  if (!studentId || !note) redirect(withMsg(back, "err", "Write what you noticed first.") + "#behaviour");
+  await sql`insert into behaviour_notes (student_id, author_id, note, advice) values (${studentId}, ${s.uid}, ${note}, ${str(fd, "advice")})`;
+  revalidatePath(`/students/${studentId}`);
+  redirect(withMsg(back, "ok", "Behaviour note saved. Only you can see it.") + "#behaviour");
+}
+
+export async function deleteBehaviourNote(fd: FormData) {
+  await requireRole("admin");
+  const [n] = await sql`delete from behaviour_notes where id = ${int(fd, "id")} returning student_id`;
+  if (n) revalidatePath(`/students/${n.student_id}`);
+  redirect(n ? `/students/${n.student_id}#behaviour` : "/admin");
+}

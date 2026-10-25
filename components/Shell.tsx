@@ -2,8 +2,8 @@ import Link from "next/link";
 import { Session } from "@/lib/auth";
 
 const TABS: Record<Session["role"], [string, string][]> = {
-  admin: [["/admin", "Students"], ["/admin/people", "Logins"], ["/admin/notices", "Notices"], ["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/remarks", "Remarks"]],
-  teacher: [["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/remarks", "Remarks"]],
+  admin: [["/admin", "Students"], ["/admin/people", "Logins"], ["/admin/notices", "Notices"], ["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/tasks", "Tasks"], ["/teach/sheets", "Sheets"], ["/teach/remarks", "Remarks"]],
+  teacher: [["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/tasks", "Tasks"], ["/teach/sheets", "Sheets"], ["/teach/remarks", "Remarks"]],
   student: [["/me", "Today"], ["/me?tab=progress", "My progress"], ["/me?tab=classes", "All classes"]],
   parent: [["/parent", "Overview"], ["/parent?tab=progress", "Progress"], ["/parent?tab=classes", "Classes"]],
 };
