@@ -8,7 +8,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main className="wrap">
       <div className="login-card stack">
         <div className="brand">
-          <img src="/acads-mark.png" alt="" width={46} height={46} />Acads Coaching
+          <img src="/acads-mark.svg" alt="" width={46} height={46} />Acads Coaching
         </div>
         <div className="panel stack">
           <h1>Sign in</h1>

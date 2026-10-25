@@ -32,7 +32,7 @@ a:hover{text-decoration-color:var(--pink)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--card)}
 .top .in{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
 .brand{font-family:var(--f-display);font-weight:800;font-size:1.3rem;color:var(--ink);display:flex;align-items:center;gap:10px;letter-spacing:-.01em}
-.brand img{width:36px;height:36px;object-fit:contain;padding:3px;background:#fff;border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--ink)}
+.brand img{width:36px;height:36px;object-fit:contain;padding:4px;background:#138a43;box-sizing:border-box;border:2px solid var(--ink);border-radius:9px;box-shadow:2px 2px 0 var(--ink)}
 .who{margin-left:auto;display:flex;gap:10px;align-items:center;color:var(--muted);font-size:.9rem;flex-wrap:wrap}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tab{border:2px solid transparent;background:none;font:inherit;font-weight:700;font-size:.92rem;color:var(--ink);padding:5px 11px;border-radius:999px;cursor:pointer}
