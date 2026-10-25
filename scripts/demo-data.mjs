@@ -3,6 +3,11 @@
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
 
+// Read .env.local when it exists; variables already set in the shell win.
+try {
+  process.loadEnvFile(".env.local");
+} catch {}
+
 const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1, onnotice: () => {} });
 const hash = await bcrypt.hash("demo123", 10);
 const id = async (q) => (await q)[0]?.id;

@@ -4,6 +4,11 @@ import { readFileSync } from "node:fs";
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
 
+// Read .env.local when it exists; variables already set in the shell win.
+try {
+  process.loadEnvFile(".env.local");
+} catch {}
+
 const sql = postgres(process.env.DATABASE_URL, { prepare: false, max: 1, onnotice: () => {} });
 await sql.unsafe(readFileSync(new URL("../db/schema.sql", import.meta.url), "utf8"));
 
