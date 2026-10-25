@@ -9,20 +9,16 @@ Website for Acads coaching (Class 6 to 10). Rahul (admin), teachers, students an
 
 Built with Next.js and Postgres (hosted on Vercel and Supabase).
 
-## Put it online (one time, about 20 minutes)
+## Put it online (one time, about 15 minutes)
 
-1. **Supabase (database).** Sign up at supabase.com and create a project (region: Mumbai). Open *Connect* and copy the **Transaction pooler** connection string. Replace `[YOUR-PASSWORD]` with the database password you chose.
-2. **Create the tables and your admin login.** On any computer with Node.js 20+:
-   ```bash
-   git clone https://github.com/teachfortune-sketch/acads.git && cd acads && npm install
-   DATABASE_URL="<connection string>" ADMIN_USERNAME=rahul ADMIN_PASSWORD="<your password>" npm run db:setup
-   ```
-3. **Vercel (website).** Sign up at vercel.com with GitHub, choose *Add New → Project*, and import `acads`. Under *Environment Variables* add:
-   - `DATABASE_URL`: the same connection string
+1. **Supabase (database).** Sign up at supabase.com and create a project. Open *Connect* and copy the **Transaction pooler** connection string. Replace `[YOUR-PASSWORD]` with the database password you chose.
+2. **Vercel (website).** Sign up at vercel.com with GitHub, choose *Add New → Project*, and import `acads`. Under *Environment Variables* add:
+   - `DATABASE_URL`: the connection string from step 1
    - `SESSION_SECRET`: any long random text (at least 32 characters)
-   
-   Click *Deploy*. Vercel gives you a link like `acads.vercel.app`. You can add your own domain later in Vercel settings.
-4. Sign in as `rahul`, open **Logins** and add your teachers, students and parents.
+   - `ADMIN_PASSWORD`: the password for your admin login (username `rahul`)
+
+   Click *Deploy*. Each deploy runs `npm run vercel-build`, which creates the tables, the Class 6–10 batches, the subjects and your admin login before building. It is safe to run again: it never changes data that is already there, and the admin password is only used the first time.
+3. Open the link Vercel gives you (like `acads.vercel.app`), sign in as `rahul`, open **Logins** and add your teachers, students and parents.
 
 ## Run it on your computer
 

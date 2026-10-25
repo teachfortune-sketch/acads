@@ -1,5 +1,5 @@
 // Creates the tables, the Class 6–10 batches, the five subjects and the first admin login.
-// Usage: DATABASE_URL=... ADMIN_USERNAME=rahul ADMIN_PASSWORD=... node scripts/setup-db.mjs
+// Usage: DATABASE_URL=... ADMIN_PASSWORD=... node scripts/setup-db.mjs  (admin username defaults to "rahul")
 import { readFileSync } from "node:fs";
 import postgres from "postgres";
 import bcrypt from "bcryptjs";
@@ -21,7 +21,7 @@ for (const [i, name] of subjects.entries())
 
 const [{ count }] = await sql`select count(*)::int as count from users where role = 'admin'`;
 if (count === 0) {
-  const username = (process.env.ADMIN_USERNAME || "admin").toLowerCase();
+  const username = (process.env.ADMIN_USERNAME || "rahul").toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (!password || password.length < 6) {
     console.error("Set ADMIN_PASSWORD (6+ characters) to create the first admin login.");
