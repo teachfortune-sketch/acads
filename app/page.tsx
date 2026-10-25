@@ -161,7 +161,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           <div className="lp-in lp-two">
             <div className="lp-head">
               <span className="lp-eyebrow">Student progress</span>
-              <h2>Parents see progress, not just marks</h2>
+              <h2>See your progress, not your marks</h2>
               <p className="lp-lead">Each subject is marked from the student&apos;s own test scores, and the weak topics turn into a clear revision list.</p>
               <ul className="lp-list">
                 <li><b>Strong</b> means 80% or more in tests.</li>
