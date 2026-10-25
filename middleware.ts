@@ -5,5 +5,5 @@ export function middleware(req: NextRequest) {
   if (!req.cookies.has("acads_session")) return NextResponse.redirect(new URL("/login", req.url));
 }
 
-// The home page (/), login, sign-up and the logo images are public.
-export const config = { matcher: ["/((?!login|logout|signup|_next|favicon|icon|apple-icon|acads-).+)"] };
+// The home page (/), login, sign-up, TV display links and the logo images are public.
+export const config = { matcher: ["/((?!login|logout|signup|tv/|_next|favicon|icon|apple-icon|acads-).+)"] };

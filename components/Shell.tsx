@@ -3,7 +3,7 @@ import { Session } from "@/lib/auth";
 import { sql } from "@/lib/db";
 
 const TABS: Record<Session["role"], [string, string][]> = {
-  admin: [["/admin", "Students"], ["/admin/approvals", "Approvals"], ["/class", "Class mode"], ["/desk", "Desk"], ["/board", "Leaderboard"], ["/syllabus", "Syllabus"], ["/admin/reports", "Reports"],
+  admin: [["/admin", "Students"], ["/admin/approvals", "Approvals"], ["/class", "Class mode"], ["/desk", "Desk"], ["/board", "Leaderboard"], ["/syllabus", "Syllabus"], ["/admin/reports", "Reports"], ["/admin/summaries", "Parent summary"], ["/admin/display", "TV display"],
     ["/admin/points", "Point rules"], ["/admin/enquiries", "Enquiries"], ["/admin/fees", "Fees"], ["/admin/people", "Logins"], ["/admin/notices", "Notices"],
     ["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/tasks", "Tasks"], ["/teach/sheets", "Sheets"], ["/teach/remarks", "Remarks"]],
   teacher: [["/class", "Class mode"], ["/board", "Leaderboard"], ["/syllabus", "Syllabus"], ["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"],

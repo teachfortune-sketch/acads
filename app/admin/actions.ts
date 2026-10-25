@@ -122,7 +122,7 @@ export async function resetPassword(fd: FormData) {
   const back = `/admin/people/${id}`;
   const password = str(fd, "password");
   if (password.length < 6) redirect(withMsg(back, "err", "Password must be at least 6 characters."));
-  await sql`update users set password_hash = ${await bcrypt.hash(password, 10)}, session_version = session_version + 1 where id = ${id}`;
+  await sql`update users set password_hash = ${await bcrypt.hash(password, 10)}, session_version = session_version + 1, failed_logins = 0, locked_until = null where id = ${id}`;
   // Changing your own password signs you out too; send admin back to login.
   if (id === s.uid) redirect("/logout");
   redirect(withMsg(back, "ok", "Password changed. They have been signed out and must use the new password."));
