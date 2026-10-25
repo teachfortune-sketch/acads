@@ -413,3 +413,26 @@ create table if not exists badge_awards (
   earned_on date not null,
   primary key (student_id, badge)
 );
+
+-- ── Questboard phase 3: TV display and weekly parent summary ──
+
+-- A private link for a classroom or reception TV. No login; the admin can turn it off at any time.
+create table if not exists display_links (
+  id serial primary key,
+  token text not null unique,
+  label text not null,
+  batch_id integer references batches(id) on delete cascade,
+  created_by integer references users(id),
+  created_at timestamptz not null default now(),
+  revoked_at timestamptz
+);
+
+-- Which weekly parent summaries have been sent, so the office can see who is left.
+create table if not exists parent_summaries (
+  student_id integer not null references users(id) on delete cascade,
+  week_start date not null,
+  channel text not null check (channel in ('whatsapp','sms')),
+  sent_by integer references users(id),
+  at timestamptz not null default now(),
+  primary key (student_id, week_start)
+);
