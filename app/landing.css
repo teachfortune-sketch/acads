@@ -158,4 +158,4 @@
 .lp-contact a{font-weight:700;text-decoration-thickness:2px;text-underline-offset:3px;margin-top:4px}
 .lp-foot{background:#000;color:#f4f4f0;font-size:.9rem}
 .lp-foot .lp-in{display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;align-items:center;padding-block:24px}
-.lp-foot a{color:#000;background:var(--yellow);border:2px solid #f4f4f0;border-radius:8px;padding:5px 12px;font-weight:700;text-decoration:none}
+.lp .lp-foot a{color:#000;background:var(--yellow);border:2px solid #f4f4f0;border-radius:8px;padding:5px 12px;font-weight:700;text-decoration:none}
