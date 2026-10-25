@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Session } from "@/lib/auth";
 
 const TABS: Record<Session["role"], [string, string][]> = {
-  admin: [["/admin", "Students"], ["/admin/enquiries", "Enquiries"], ["/admin/people", "Logins"], ["/admin/notices", "Notices"], ["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/tasks", "Tasks"], ["/teach/sheets", "Sheets"], ["/teach/remarks", "Remarks"]],
+  admin: [["/admin", "Students"], ["/admin/enquiries", "Enquiries"], ["/admin/fees", "Fees"], ["/admin/people", "Logins"], ["/admin/notices", "Notices"], ["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/tasks", "Tasks"], ["/teach/sheets", "Sheets"], ["/teach/remarks", "Remarks"]],
   teacher: [["/teach/calendar", "Calendar"], ["/teach", "Classes"], ["/teach/exams", "Tests"], ["/teach/tasks", "Tasks"], ["/teach/sheets", "Sheets"], ["/teach/remarks", "Remarks"]],
   student: [["/me", "Today"], ["/me?tab=progress", "My progress"], ["/me?tab=classes", "All classes"]],
-  parent: [["/parent", "Overview"], ["/parent?tab=progress", "Progress"], ["/parent?tab=classes", "Classes"]],
+  parent: [["/parent", "Overview"], ["/parent?tab=progress", "Progress"], ["/parent?tab=classes", "Classes"], ["/parent?tab=fees", "Fees"]],
 };
 
 // child keeps a parent's chosen child selected when they switch tabs.

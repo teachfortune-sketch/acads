@@ -34,3 +34,15 @@ export function withMsg(path: string, key: "ok" | "err", text: string) {
 export const USERNAME_RE = /^[a-z0-9._]{3,30}$/;
 
 export const ENQUIRY_STATUSES = ["New", "Contacted", "Demo scheduled", "Demo attended", "Admitted", "Lost"] as const;
+
+export const PAY_MODES = ["Cash", "UPI", "Bank transfer", "Cheque"] as const;
+
+export function rupees(n: number) {
+  return "₹" + Math.round(n).toLocaleString("en-IN");
+}
+
+// Whole rupees only; returns null for anything that is not a positive amount.
+export function amount(fd: FormData, k: string) {
+  const n = Number(str(fd, k).replace(/[,₹\s]/g, ""));
+  return Number.isInteger(n) && n > 0 && n <= 10_000_000 ? n : null;
+}
