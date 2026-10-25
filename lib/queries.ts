@@ -23,12 +23,16 @@ export async function canTeach(s: Session, subjectId: number) {
 export const batchStudents = (batchId: number) =>
   sql<{ id: number; name: string }[]>`
     select u.id, u.name from students st join users u on u.id = st.user_id
-    where st.batch_id = ${batchId} and u.active order by u.name`;
+    where st.batch_id = ${batchId} and u.active and u.status = 'approved' order by u.name`;
 
-export type StudentInfo = { id: number; name: string; username: string; batch_id: number; batch: string; parent_id: number | null; parent: string | null };
+export type StudentInfo = {
+  id: number; name: string; username: string; batch_id: number; batch: string; parent_id: number | null; parent: string | null;
+  school: string; section: string; roll_no: string; parent_name: string; parent_mobile: string;
+};
 export async function getStudent(id: number) {
   const [s] = await sql<StudentInfo[]>`
-    select u.id, u.name, u.username, st.batch_id, b.name as batch, st.parent_id, p.name as parent
+    select u.id, u.name, u.username, st.batch_id, b.name as batch, st.parent_id, p.name as parent,
+      st.school, st.section, st.roll_no, st.parent_name, st.parent_mobile
     from students st join users u on u.id = st.user_id join batches b on b.id = st.batch_id
     left join users p on p.id = st.parent_id
     where st.user_id = ${id}`;

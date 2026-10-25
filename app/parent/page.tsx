@@ -6,13 +6,16 @@ import { Shell } from "@/components/Shell";
 import { Classes, Overview, Progress } from "@/components/StudentViews";
 import { Entries, FeeTotals, Schedule } from "@/components/FeeViews";
 import { getLedger } from "@/lib/fees";
+import { QuestHome } from "@/components/Quest";
+
+const TABS = ["overview", "progress", "classes", "fees"];
 
 export default async function ParentPage({ searchParams }: { searchParams: Promise<{ tab?: string; child?: string }> }) {
   const s = await requireRole("parent");
   const { tab, child } = await searchParams;
   const children = await sql<{ id: number; name: string }[]>`
     select u.id, u.name from students st join users u on u.id = st.user_id where st.parent_id = ${s.uid} order by u.name`;
-  const active = tab === "progress" || tab === "classes" || tab === "fees" ? `/parent?tab=${tab}` : "/parent";
+  const active = tab && TABS.includes(tab) ? `/parent?tab=${tab}` : "/parent";
   if (!children.length)
     return <Shell s={s} active={active}><p>No child is linked to your login yet. Please tell Rahul.</p></Shell>;
   const chosen = children.find((c) => c.id === Number(child)) ?? children[0];
@@ -32,7 +35,8 @@ export default async function ParentPage({ searchParams }: { searchParams: Promi
           ))}
         </div>
       )}
-      {tab === "fees" ? <Fees id={st.id} /> : tab === "progress" ? <Progress st={st} /> : tab === "classes" ? <Classes st={st} /> : <Overview st={st} forParent />}
+      {tab === "fees" ? <Fees id={st.id} /> : tab === "progress" ? <Progress st={st} /> : tab === "classes" ? <Classes st={st} />
+        : tab === "overview" ? <Overview st={st} forParent /> : <QuestHome st={st} viewer="parent" />}
     </Shell>
   );
 }

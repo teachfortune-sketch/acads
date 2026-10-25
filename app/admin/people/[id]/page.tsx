@@ -11,7 +11,7 @@ export default async function EditUserPage({ params, searchParams }: { params: P
   const s = await requireRole("admin");
   const sp = await searchParams;
   const [u] = await sql`
-    select u.id, u.name, u.username, u.role, u.active, st.batch_id, st.parent_id
+    select u.id, u.name, u.username, u.role, u.active, st.batch_id, st.parent_id, st.section, st.roll_no
     from users u left join students st on st.user_id = u.id where u.id = ${Number((await params).id) || 0}`;
   if (!u) notFound();
   const [batches, subjects] = await Promise.all([getBatches(), getSubjects()]);
@@ -35,6 +35,8 @@ export default async function EditUserPage({ params, searchParams }: { params: P
               <label>Batch
                 <select id="batch_id" name="batch_id" defaultValue={u.batch_id}>{batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select>
               </label>
+              <label>Section<input id="section" name="section" defaultValue={u.section} maxLength={10} /></label>
+              <label>Roll number<input id="roll_no" name="roll_no" defaultValue={u.roll_no} maxLength={10} /></label>
               <label>Parent login
                 <select id="parent_id" name="parent_id" defaultValue={u.parent_id ?? ""}>
                   <option value="">None</option>

@@ -70,5 +70,35 @@ for (const b of ["Class 7", "Class 9"]) {
 await sql`insert into notices (author_id, body) values (${admin.id}, 'Half-yearly exams start 9 November. The revision timetable will be shared on Monday.')`;
 await sql`insert into notices (author_id, batch_id, body) values (${admin.id}, ${batch["Class 9"]}, 'Class 9: bring your maths test copies on Tuesday.')`;
 await sql`insert into remarks (student_id, subject_id, author_id, body) values (${kids[2].sid}, ${subj.Maths}, ${admin.id}, 'Understands the method but makes sign errors. Needs daily practice of 10 sums.')`;
-console.log('Demo data added. Logins: aarav, diya, kabir, meera, rohan (and <name>.parent), hindi.teacher, english.teacher. Password: demo123');
+// Questboard: a reception login, roll numbers, and two weeks of points for Class 9 so the home page and leaderboard have something to show.
+await user("reception", "Front desk", "reception");
+let roll = 1;
+for (const k of kids) await sql`update students set roll_no = ${String(roll++)}, section = 'A', school = 'Demo Public School' where user_id = ${k.sid}`;
+const class9 = kids.filter((k) => k.b === "Class 9");
+const days = [];
+for (let d = new Date(Date.UTC(2026, 9, 12)); days.length < 10; d.setUTCDate(d.getUTCDate() + 1)) if (d.getUTCDay() !== 0) days.push(d.toISOString().slice(0, 10));
+const pt = (sid, pillar, action, xp, reason, day, quest = null) =>
+  sql`insert into points (student_id, pillar, action, xp, reason, staff_id, quest_id, day, created_at)
+    values (${sid}, ${pillar}, ${action}, ${xp}, ${reason}, ${admin.id}, ${quest}, ${day}, ${day + "T10:00:00+05:30"})`;
+for (const [i, day] of days.entries()) {
+  const [q] = await sql`insert into quests (batch_id, subject_id, due_on, book, chapter, exercise, questions, posted_by)
+    values (${batch["Class 9"]}, ${subj.Maths}, ${day}, 'NCERT Ganita Manjari', ${`${1 + Math.floor(i / 3)}`}, ${`${1 + Math.floor(i / 3)}.${1 + (i % 3)}`}, '1–8', ${admin.id})
+    on conflict (batch_id, due_on) do nothing returning id`;
+  if (!q) continue;
+  for (const k of class9) {
+    const status = rnd() < k.att ? (rnd() < 0.15 ? "late" : "present") : "absent";
+    await sql`insert into day_attendance (student_id, day, batch_id, status, arrived_at, marked_by)
+      values (${k.sid}, ${day}, ${batch["Class 9"]}, ${status}, ${status === "late" ? "09:1" + Math.floor(rnd() * 9) : ""}, ${admin.id}) on conflict do nothing`;
+    if (status === "present") await pt(k.sid, "attendance", "att_present", 10, "Present on time", day);
+    else if (status === "late") await pt(k.sid, "attendance", "att_late", 5, "Late", day);
+    else await pt(k.sid, "attendance", "att_absent", 0, "Absent", day);
+    const done = rnd() < k.skill + 0.1, stars = done ? Math.min(3, Math.floor(rnd() * 4 * k.skill)) : 0;
+    await sql`insert into quest_checks (quest_id, student_id, done, stars, checked_by) values (${q.id}, ${k.sid}, ${done}, ${stars}, ${admin.id})`;
+    await pt(k.sid, "homework", done ? "hw_done" : "hw_missed", done ? 10 + 5 * stars : 0, done ? `Homework done${stars ? " " + "★".repeat(stars) : ""}` : "Homework not done", day, q.id);
+    if (rnd() < k.skill * 0.6) await pt(k.sid, "presence", "answered", 5, "Answered a question", day);
+    if (rnd() < 0.08) await pt(k.sid, "discipline", "disc_uniform", -5, "Uniform", day);
+  }
+}
+
+console.log('Demo data added. Logins: aarav, diya, kabir, meera, rohan (and <name>.parent), hindi.teacher, english.teacher, reception. Password: demo123');
 await sql.end();

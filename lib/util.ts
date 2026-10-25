@@ -32,6 +32,9 @@ export function withMsg(path: string, key: "ok" | "err", text: string) {
 }
 
 export const USERNAME_RE = /^[a-z0-9._]{3,30}$/;
+// Students choosing their own username at sign-up.
+export const SIGNUP_USERNAME_RE = /^[a-z0-9_]{4,20}$/;
+export const MOBILE_RE = /^[6-9]\d{9}$/;
 
 export const ENQUIRY_STATUSES = ["New", "Contacted", "Demo scheduled", "Demo attended", "Admitted", "Lost"] as const;
 
