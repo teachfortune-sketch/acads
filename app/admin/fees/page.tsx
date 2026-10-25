@@ -30,7 +30,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
         <div className="panel"><div className="muted small">Total fees</div><div className="big num">{rupees(sum("billed"))}</div></div>
         <div className="panel"><div className="muted small">Received</div><div className="big num">{rupees(sum("paid"))}</div></div>
         <div className="panel"><div className="muted small">Outstanding</div><div className="big num">{rupees(sum("outstanding"))}</div></div>
-        <div className="panel"><div className="muted small">Overdue now</div><div className="big num" style={{ color: sum("overdue") ? "var(--bad)" : undefined }}>{rupees(sum("overdue"))}</div></div>
+        <div className="panel"><div className="muted small">Overdue now</div><div className="big num" style={{ color: sum("overdue") ? "var(--bad-ink)" : undefined }}>{rupees(sum("overdue"))}</div></div>
       </div>
       {noPlan > 0 && <div className="banner">{noPlan} student{noPlan > 1 ? "s have" : " has"} no fee plan yet.</div>}
       <div className="panel tbl-wrap">

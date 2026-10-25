@@ -86,7 +86,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               </div>
             </div>
             <div className="lp-hero-logo">
-              <img src="/acads-logo.png" alt="Acads Coaching Institute: Discover. Learn. Excel." width={593} height={708} />
+              <div className="tile"><img src="/acads-logo.png" alt="Acads Coaching Institute: Discover. Learn. Excel." width={593} height={708} /></div>
             </div>
           </div>
         </section>
@@ -129,7 +129,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           </div>
         </section>
 
-        <section className="lp-sec dark" id="method">
+        <section className="lp-sec sun" id="method">
           <div className="lp-in">
             <div className="lp-head">
               <span className="lp-eyebrow">Our method</span>
@@ -176,7 +176,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               {([["Maths", 86, "Strong", "p-good"], ["Science", 72, "On track", "p-ok"], ["Social", 54, "Needs help", "p-help"], ["English", 81, "Strong", "p-good"]] as const).map(([s, v, l, c]) => (
                 <div className="lp-row" key={s}>
                   <span>{s}</span>
-                  <div className="lp-bar"><span style={{ width: `${v}%`, background: c === "p-good" ? "#2f8f2f" : c === "p-ok" ? "#d9a514" : "#c8483d" }} /></div>
+                  <div className="lp-bar"><span style={{ width: `${v}%`, background: c === "p-good" ? "var(--mint)" : c === "p-ok" ? "var(--sky)" : "var(--coral)" }} /></div>
                   <span className={`lp-pill ${c}`}>{l}</span>
                 </div>
               ))}
@@ -185,7 +185,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           </div>
         </section>
 
-        <section className="lp-sec" id="admissions">
+        <section className="lp-sec pink" id="admissions">
           <div className="lp-in lp-two">
             <div className="lp-head">
               <span className="lp-eyebrow">Admissions open</span>
@@ -216,7 +216,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
           </div>
         </section>
 
-        <section className="lp-sec dark" id="contact">
+        <section className="lp-sec sky" id="contact">
           <div className="lp-in">
             <div className="lp-head">
               <span className="lp-eyebrow">Contact</span>

@@ -15,7 +15,7 @@ export function FeeTotals({ t }: { t: Totals }) {
         <div className="big num">{rupees(Math.abs(t.outstanding))}</div>
         {!advance && t.outstanding > 0 && <div className="muted small">{t.nextDue ? `Next due ${fmtDate(t.nextDue)}` : ""}</div>}</div>
       <div className="panel"><div className="muted small">Overdue now</div>
-        <div className="big num" style={{ color: t.overdue ? "var(--bad)" : undefined }}>{rupees(t.overdue)}</div></div>
+        <div className="big num" style={{ color: t.overdue ? "var(--bad-ink)" : undefined }}>{rupees(t.overdue)}</div></div>
     </div>
   );
 }
@@ -73,7 +73,7 @@ export function Entries({ entries, child, reverseForm }: { entries: Entry[]; chi
               <div style={{ textAlign: "right" }}>
                 <div className="num" style={{ textDecoration: e.reversed_at ? "line-through" : undefined }}>{rupees(e.amount)}</div>
                 {e.reversed_at ? (
-                  <div className="small" style={{ color: "var(--bad)" }}>Reversed{e.reversed_by ? ` by ${e.reversed_by}` : ""}: {e.reversal_reason}</div>
+                  <div className="small" style={{ color: "var(--bad-ink)" }}>Reversed{e.reversed_by ? ` by ${e.reversed_by}` : ""}: {e.reversal_reason}</div>
                 ) : (
                   reverseForm?.(e)
                 )}

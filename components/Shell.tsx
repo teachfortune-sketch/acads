@@ -16,7 +16,7 @@ export function Shell({ s, active, child, children }: { s: Session; active: stri
       <header className="top">
         <div className="in">
           <Link href="/app" className="brand" style={{ textDecoration: "none" }}>
-            <i></i>Acads
+            <img src="/acads-mark.png" alt="" width={36} height={36} />Acads
           </Link>
           <nav className="tabs">
             {TABS[s.role].map(([href, label]) => (

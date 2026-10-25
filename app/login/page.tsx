@@ -6,8 +6,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main className="wrap">
       <div className="login-card stack">
-        <div className="brand" style={{ fontSize: "1.5rem" }}>
-          <i></i>Acads Coaching
+        <div className="brand">
+          <img src="/acads-mark.png" alt="" width={46} height={46} />Acads Coaching
         </div>
         <div className="panel stack">
           <h1>Sign in</h1>
