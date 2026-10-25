@@ -24,7 +24,8 @@ export async function clearSession() {
   (await cookies()).delete(COOKIE);
 }
 
-async function readSession(): Promise<Session | null> {
+// Cookie only, no database check. For pages that work signed in or out.
+export async function readSession(): Promise<Session | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   try {
@@ -43,7 +44,7 @@ export async function requireRole(...roles: Role[]): Promise<Session> {
   const [u] = await sql`select active, session_version, role, name from users where id = ${s.uid}`;
   if (!u || !u.active || u.session_version !== s.v) redirect("/logout");
   const session = { ...s, role: u.role as Role, name: u.name as string };
-  if (roles.length && !roles.includes(session.role)) redirect("/");
+  if (roles.length && !roles.includes(session.role)) redirect("/app");
   return session;
 }
 

@@ -9,6 +9,7 @@ Website for Acads coaching (Class 6 to 10). Rahul (admin), teachers, students an
 - **Calendar:** teachers plan classes and tests with prerequisites. Students and parents see the next two weeks, and a planned class opens the log form already filled in.
 - **Tasks:** after a class, a teacher gives a task to some or all students. Students tick it off; the teacher sees who is done.
 - **Worksheets:** numbered sheets assigned to a whole batch. Add them on the site (admin) or as files in `sheets/` (see `sheets/README.md`), which sync on every deploy.
+- **Home page:** the public landing page at `/` with the logo, classes, method, facilities and an admission enquiry form. Enquiries land in **Enquiries** for the admin. Links like `/?class=7#admissions` preselect a class, and `/?src=facebook` records where the visitor came from.
 - **Behaviour notes:** private notes and advice per student, visible only to the admin.
 
 Built with Next.js and Postgres (hosted on Vercel and Supabase).

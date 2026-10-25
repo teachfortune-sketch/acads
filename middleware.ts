@@ -5,4 +5,5 @@ export function middleware(req: NextRequest) {
   if (!req.cookies.has("acads_session")) return NextResponse.redirect(new URL("/login", req.url));
 }
 
-export const config = { matcher: ["/((?!login|logout|_next|favicon).*)"] };
+// The home page (/) is public, as are the logo images.
+export const config = { matcher: ["/((?!login|logout|_next|favicon|icon|acads-).+)"] };

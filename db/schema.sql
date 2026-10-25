@@ -162,3 +162,20 @@ create table if not exists behaviour_notes (
   advice text not null default '',
   created_at timestamptz not null default now()
 );
+
+-- Admission enquiries from the public website.
+create table if not exists enquiries (
+  id serial primary key,
+  guardian_name text not null,
+  student_name text not null default '',
+  class_level text not null default '',
+  phone text not null,
+  message text not null default '',
+  source text not null default 'website',
+  status text not null default 'New'
+    check (status in ('New','Contacted','Demo scheduled','Demo attended','Admitted','Lost')),
+  next_follow_up date,
+  notes text not null default '',
+  created_at timestamptz not null default now()
+);
+create index if not exists enquiries_status_idx on enquiries (status, created_at desc);

@@ -11,5 +11,5 @@ export async function login(fd: FormData) {
   const ok = u && u.active && (await bcrypt.compare(str(fd, "password"), u.password_hash));
   if (!ok) redirect("/login?err=" + encodeURIComponent("Wrong username or password."));
   await createSession({ uid: u.id, role: u.role as Role, name: u.name, v: u.session_version });
-  redirect("/");
+  redirect("/app");
 }
