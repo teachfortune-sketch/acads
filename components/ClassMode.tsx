@@ -64,7 +64,7 @@ export function ClassMode(props: {
   };
   const routine = (t: Tile, days: number) => {
     patch(t.id, { routine: days });
-    send({ type: "routine", student: t.id, days });
+    send({ type: "routine", student: t.id, days, day: props.day });
   };
   const deduct = (t: Tile, reason: string, label: string, amount: number, note = "") => {
     patch(t.id, { todayXp: t.todayXp - amount });

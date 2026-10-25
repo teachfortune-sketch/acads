@@ -368,11 +368,13 @@ export async function settleCleanWeeks() {
       await tx`
         insert into badge_awards (student_id, badge, earned_on)
         select id, 'podium', ${addDays(week, 5)}::date from (
-          select u.id, rank() over (partition by st.batch_id order by coalesce(sum(p.xp), 0) desc) as r, coalesce(sum(p.xp), 0) as net
+          select u.id, coalesce(sum(p.xp), 0) as net,
+            row_number() over (partition by st.batch_id order by coalesce(sum(p.xp), 0) desc,
+              count(p.*) filter (where p.xp < 0 and p.reversed_by_id is null and p.reverses_id is null), u.name) as r
           from students st join users u on u.id = st.user_id and u.active and u.status = 'approved'
           left join points p on p.student_id = u.id and p.day >= (select coalesce((select value from point_rules where key = 'term_start'), ${String(RULES.term_start.def)}))::date
             and p.day < ${next}
-          group by u.id, st.batch_id) t
+          group by u.id, u.name, st.batch_id) t
         where r <= 3 and net > 0
         on conflict do nothing`;
       week = next;
@@ -417,11 +419,14 @@ export async function verifyTask(db: Db, v: { task: number; verdict: "verified" 
 
 // Routine streak: the teacher confirms at the weekly check how many school days (Mon–Sat) the student followed their routine.
 // Days carry over from a full week into the next, so the streak is the run of followed days ending at the latest check.
-export async function setRoutine(db: Db, r: { student: number; days: number; actor: Actor; at?: Date }) {
+export async function setRoutine(db: Db, r: { student: number; days: number; actor: Actor; at?: Date; day?: string }) {
   const rules = await getRules(db);
   await studentBatch(db, r.student);
   const days = Math.max(0, Math.min(6, Math.round(r.days)));
-  const week = mondayOf(istParts(r.at ?? new Date()).day);
+  // The week of the class being shown, if given (a teacher may correct last week's check), else the week of the tap.
+  const today = istParts(r.at ?? new Date()).day;
+  const shown = r.day && /^\d{4}-\d{2}-\d{2}$/.test(r.day) && r.day <= today && r.day >= addDays(today, -28) ? r.day : today;
+  const week = mondayOf(shown);
   await db`insert into routine_checks (student_id, week_start, days, checked_by) values (${r.student}, ${week}, ${days}, ${r.actor.uid})
     on conflict (student_id, week_start) do update set days = excluded.days, checked_by = excluded.checked_by, at = now()`;
   await settleRoutineStreak(db, r.student, week, r.actor.uid, rules);

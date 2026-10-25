@@ -18,7 +18,7 @@ type Action =
   | { id: string; at: string; type: "undo"; point: number }
   | { id: string; at: string; type: "unlate"; student: number }
   | { id: string; at: string; type: "selfstudy"; task: number; verdict: "verified" | "great" | null; comment?: string }
-  | { id: string; at: string; type: "routine"; student: number; days: number };
+  | { id: string; at: string; type: "routine"; student: number; days: number; day?: string };
 
 const ALLOWED: Record<Action["type"], string[]> = {
   attendance: ["admin", "teacher"], homework: ["admin", "teacher"], presence: ["admin", "teacher"],
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
             if (![null, "verified", "great"].includes(a.verdict)) throw new PointsError("Unknown check.");
             return verifyTask(tx, { task: Number(a.task), verdict: a.verdict, comment: String(a.comment ?? ""), actor, at });
           case "routine":
-            return setRoutine(tx, { student: Number(a.student), days: Number(a.days), actor, at });
+            return setRoutine(tx, { student: Number(a.student), days: Number(a.days), actor, at, day: typeof a.day === "string" ? a.day : undefined });
           case "unlate":
             return undoLate(tx, Number(a.student), actor, istParts(at).day);
         }
