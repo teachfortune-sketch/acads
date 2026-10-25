@@ -50,7 +50,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
       <header className="lp-top">
         <div className="lp-in">
           <a href="#top" className="lp-brand" aria-label="Acads Coaching Institute, home">
-            <img src="/acads-mark.png" alt="" width={38} height={36} />
+            <img src="/acads-mark.svg" alt="" width={42} height={42} />
             <span><b>Acads</b><small>COACHING INSTITUTE</small></span>
           </a>
           <nav className="lp-nav" aria-label="Sections">
@@ -82,7 +82,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               </div>
             </div>
             <div className="lp-hero-logo">
-              <div className="tile"><img src="/acads-logo.png" alt="Acads Coaching Institute: Discover. Learn. Excel." width={593} height={708} /></div>
+              <div className="tile" role="img" aria-label="Acads Coaching Institute: Discover. Learn. Excel.">
+                <img src="/acads-mark.svg" alt="" width={220} height={220} />
+                <b>Acads</b>
+                <small>COACHING INSTITUTE</small>
+                <span>Discover. Learn. Excel.</span>
+              </div>
             </div>
           </div>
         </section>

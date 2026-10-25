@@ -6,4 +6,4 @@ export function middleware(req: NextRequest) {
 }
 
 // The home page (/), login, sign-up and the logo images are public.
-export const config = { matcher: ["/((?!login|logout|signup|_next|favicon|icon|acads-).+)"] };
+export const config = { matcher: ["/((?!login|logout|signup|_next|favicon|icon|apple-icon|acads-).+)"] };
