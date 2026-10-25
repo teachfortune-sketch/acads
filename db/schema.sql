@@ -98,3 +98,67 @@ create table if not exists remarks (
   body text not null,
   created_at timestamptz not null default now()
 );
+
+-- Planned classes and tests. Once the class is logged or marks entered, it links to them.
+create table if not exists schedule (
+  id serial primary key,
+  kind text not null check (kind in ('class','test')),
+  batch_id integer not null references batches(id),
+  subject_id integer not null references subjects(id),
+  teacher_id integer not null references users(id),
+  planned_on date not null,
+  start_time text not null default '',
+  topic text not null,
+  prerequisites text not null default '',
+  lecture_id integer references lectures(id) on delete set null,
+  exam_id integer references exams(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists schedule_batch_idx on schedule (batch_id, planned_on);
+
+-- Work a teacher gives to some or all students of a batch, usually after a class.
+create table if not exists tasks (
+  id serial primary key,
+  lecture_id integer references lectures(id) on delete set null,
+  batch_id integer not null references batches(id),
+  subject_id integer not null references subjects(id),
+  teacher_id integer not null references users(id),
+  title text not null,
+  details text not null default '',
+  due_on date,
+  created_at timestamptz not null default now()
+);
+create table if not exists task_students (
+  task_id integer not null references tasks(id) on delete cascade,
+  student_id integer not null references users(id) on delete cascade,
+  done boolean not null default false,
+  primary key (task_id, student_id)
+);
+
+-- Numbered worksheets. Assigned to every student of the batch.
+create table if not exists sheets (
+  id serial primary key,
+  number integer not null unique,
+  title text not null,
+  batch_id integer not null references batches(id),
+  subject_id integer references subjects(id),
+  body text not null default '',
+  due_on date,
+  created_at timestamptz not null default now()
+);
+create table if not exists sheet_students (
+  sheet_id integer not null references sheets(id) on delete cascade,
+  student_id integer not null references users(id) on delete cascade,
+  done boolean not null default false,
+  primary key (sheet_id, student_id)
+);
+
+-- Private notes on a student's behaviour. Only the admin sees these.
+create table if not exists behaviour_notes (
+  id serial primary key,
+  student_id integer not null references users(id) on delete cascade,
+  author_id integer not null references users(id),
+  note text not null,
+  advice text not null default '',
+  created_at timestamptz not null default now()
+);

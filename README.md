@@ -6,6 +6,10 @@ Website for Acads coaching (Class 6 to 10). Rahul (admin), teachers, students an
 - **Teachers:** log each class (topic, notes, homework, attendance), tick homework, enter test marks and write remarks. A teacher only works with the subjects assigned to them.
 - **Students:** classes they missed with notes and homework, pending homework, notices, progress per subject and the topics to revise.
 - **Parents:** the same view for their child (or children) with teacher remarks.
+- **Calendar:** teachers plan classes and tests with prerequisites. Students and parents see the next two weeks, and a planned class opens the log form already filled in.
+- **Tasks:** after a class, a teacher gives a task to some or all students. Students tick it off; the teacher sees who is done.
+- **Worksheets:** numbered sheets assigned to a whole batch. Add them on the site (admin) or as files in `sheets/` (see `sheets/README.md`), which sync on every deploy.
+- **Behaviour notes:** private notes and advice per student, visible only to the admin.
 
 Built with Next.js and Postgres (hosted on Vercel and Supabase).
 

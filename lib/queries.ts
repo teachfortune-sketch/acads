@@ -113,3 +113,30 @@ export const studentExams = (studentId: number) =>
     select ex.id, ex.title, ex.topic, ex.held_on::text, sub.name as subject, ex.max_marks::float, m.marks::float
     from exam_marks m join exams ex on ex.id = m.exam_id join subjects sub on sub.id = ex.subject_id
     where m.student_id = ${studentId} order by ex.held_on desc`;
+
+export type PlanRow = { id: number; kind: "class" | "test"; planned_on: string; start_time: string; topic: string; prerequisites: string; subject: string; batch: string; teacher: string; lecture_id: number | null; exam_id: number | null };
+
+export const upcomingForBatch = (batchId: number, days = 14) =>
+  sql<PlanRow[]>`
+    select p.id, p.kind, p.planned_on::text, p.start_time, p.topic, p.prerequisites, sub.name as subject, b.name as batch, t.name as teacher, p.lecture_id, p.exam_id
+    from schedule p join subjects sub on sub.id = p.subject_id join batches b on b.id = p.batch_id join users t on t.id = p.teacher_id
+    where p.batch_id = ${batchId} and p.planned_on >= current_date and p.planned_on <= current_date + ${days}::int
+      and p.lecture_id is null and p.exam_id is null
+    order by p.planned_on, p.start_time`;
+
+export type TaskRow = { id: number; title: string; details: string; due_on: string | null; subject: string; teacher: string; done: boolean; topic: string | null };
+export const studentTasks = (studentId: number) =>
+  sql<TaskRow[]>`
+    select t.id, t.title, t.details, t.due_on::text, sub.name as subject, u.name as teacher, ts.done, l.topic
+    from task_students ts join tasks t on t.id = ts.task_id join subjects sub on sub.id = t.subject_id
+    join users u on u.id = t.teacher_id left join lectures l on l.id = t.lecture_id
+    where ts.student_id = ${studentId}
+    order by ts.done, t.due_on nulls last, t.created_at desc limit 50`;
+
+export type SheetRow = { id: number; number: number; title: string; due_on: string | null; subject: string | null; done: boolean };
+export const studentSheets = (studentId: number) =>
+  sql<SheetRow[]>`
+    select s.id, s.number, s.title, s.due_on::text, sub.name as subject, ss.done
+    from sheet_students ss join sheets s on s.id = ss.sheet_id left join subjects sub on sub.id = s.subject_id
+    where ss.student_id = ${studentId}
+    order by ss.done, s.number desc limit 50`;

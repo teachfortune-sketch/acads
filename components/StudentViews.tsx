@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { fmtDate, level, pct } from "@/lib/util";
 import {
-  LectureRow, noticesForStudent, pendingHomework, remarksFor, StudentInfo, studentExams, studentLectures, subjectStats, totals,
+  LectureRow, noticesForStudent, pendingHomework, remarksFor, StudentInfo, studentExams, studentLectures, studentSheets, studentTasks,
+  subjectStats, totals, upcomingForBatch,
 } from "@/lib/queries";
+import { toggleSheet, toggleTask } from "@/app/me/actions";
 
 const color = (x: number) => (x >= 0.8 ? "var(--good)" : x >= 0.6 ? "var(--mark)" : "var(--bad)");
 export function Bar({ x }: { x: number | null }) {
@@ -92,11 +95,89 @@ export async function StatTiles({ st }: { st: StudentInfo }) {
   );
 }
 
+async function ComingUp({ st }: { st: StudentInfo }) {
+  const plans = await upcomingForBatch(st.batch_id);
+  return (
+    <div className="panel">
+      <h2>Coming up</h2>
+      {plans.length ? (
+        <ul className="list">
+          {plans.map((p) => (
+            <li key={p.id}>
+              <div>
+                <b>{p.kind === "test" ? "Test: " : ""}{p.subject}</b>: {p.topic}
+                <div className="muted small">{fmtDate(p.planned_on)}{p.start_time ? ` at ${p.start_time}` : ""} · {p.teacher}</div>
+                {p.prerequisites && <div className="prereq"><b>Before this {p.kind}:</b> {p.prerequisites}</div>}
+              </div>
+              {p.kind === "test" && <span className="chip c-warn">Test</span>}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">Nothing planned for the next two weeks yet.</p>
+      )}
+    </div>
+  );
+}
+
+// canTick: only the student themself can mark their work done.
+async function Work({ st, canTick }: { st: StudentInfo; canTick: boolean }) {
+  const [tasks, sheets] = await Promise.all([studentTasks(st.id), studentSheets(st.id)]);
+  const Tick = ({ action, id, done }: { action: (fd: FormData) => Promise<void>; id: number; done: boolean }) =>
+    canTick ? (
+      <form action={action}>
+        <input type="hidden" name="id" value={id} />
+        <button className="small" type="submit" aria-label={done ? "Mark as not done" : "Mark as done"}>{done ? "✓ Done" : "Mark done"}</button>
+      </form>
+    ) : (
+      <span className={`chip ${done ? "c-good" : "c-warn"}`}>{done ? "Done" : "Pending"}</span>
+    );
+  return (
+    <div className="grid">
+      <div className="panel">
+        <h2>Tasks from teachers</h2>
+        {tasks.length ? (
+          <ul className="list">
+            {tasks.map((t) => (
+              <li key={t.id}>
+                <div style={t.done ? { opacity: 0.6 } : undefined}>
+                  <b>{t.subject}</b>: {t.title}
+                  <div className="muted small">{t.teacher}{t.due_on ? ` · due ${fmtDate(t.due_on)}` : ""}{t.topic ? ` · after: ${t.topic}` : ""}</div>
+                  {t.details && <div className="small pre">{t.details}</div>}
+                </div>
+                <Tick action={toggleTask} id={t.id} done={t.done} />
+              </li>
+            ))}
+          </ul>
+        ) : <p className="muted">No tasks right now.</p>}
+      </div>
+      <div className="panel">
+        <h2>Worksheets</h2>
+        {sheets.length ? (
+          <ul className="list">
+            {sheets.map((sh) => (
+              <li key={sh.id}>
+                <div style={sh.done ? { opacity: 0.6 } : undefined}>
+                  <Link href={`/sheets/${sh.id}${canTick ? "" : `?child=${st.id}`}`}><b>Sheet {sh.number}</b>: {sh.title}</Link>
+                  <div className="muted small">{sh.subject ?? "All subjects"}{sh.due_on ? ` · due ${fmtDate(sh.due_on)}` : ""}</div>
+                </div>
+                <Tick action={toggleSheet} id={sh.id} done={sh.done} />
+              </li>
+            ))}
+          </ul>
+        ) : <p className="muted">No worksheets yet.</p>}
+      </div>
+    </div>
+  );
+}
+
 export async function Overview({ st, forParent }: { st: StudentInfo; forParent?: boolean }) {
   const [missed, pending] = await Promise.all([studentLectures(st.id, true, 8), pendingHomework(st.id)]);
   return (
     <>
       {forParent && <StatTiles st={st} />}
+      <ComingUp st={st} />
+      <Work st={st} canTick={!forParent} />
       <div className="grid">
         <div className="panel">
           <h2>Classes {forParent ? "missed" : "you missed"}</h2>

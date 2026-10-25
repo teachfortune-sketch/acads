@@ -27,6 +27,11 @@ export default async function LecturePage({ params, searchParams }: { params: Pr
         <p className="muted">{l.batch} · taught by {l.teacher}</p>
       </div>
       <Flash sp={sp} />
+      {editable && (
+        <div className="row-actions">
+          <Link className="btn" href={`/teach/tasks?batch=${l.batch_id}&lecture=${l.id}`}>Give a task for this class</Link>
+        </div>
+      )}
       <form action={updateLecture} className="stack">
         <input type="hidden" name="id" value={l.id} />
         <fieldset disabled={!editable} style={{ border: 0, padding: 0, margin: 0 }} className="stack">

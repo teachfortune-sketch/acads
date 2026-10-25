@@ -86,3 +86,13 @@ a{color:var(--accent)}
 .login-card{max-width:380px;margin:8vh auto 0}
 .pre{white-space:pre-wrap}
 td input[type=checkbox]{width:18px;height:18px}
+.cal{table-layout:fixed;min-width:760px}
+.cal td{height:96px;padding:6px;border:1px solid var(--line)}
+.cal th{text-align:center}
+.cal-day{font-size:.8rem;color:var(--muted);margin-bottom:4px}
+.cal-today{background:var(--accent-soft)}
+.cal-item{display:block;font-size:.78rem;line-height:1.3;padding:3px 6px;margin-bottom:4px;border-radius:5px;background:var(--accent-soft);color:var(--ink);text-decoration:none;border-left:3px solid var(--accent)}
+.cal-test{background:var(--mark-soft);border-left-color:var(--mark)}
+.cal-done{opacity:.55}
+.prereq{font-size:.88rem;background:var(--mark-soft);border-radius:6px;padding:6px 9px;margin-top:6px}
+.sheet-body{font-size:1rem;line-height:1.7}

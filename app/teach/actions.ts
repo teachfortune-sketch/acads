@@ -28,10 +28,12 @@ export async function createLecture(fd: FormData) {
       returning id`;
     for (const st of students)
       await tx`insert into attendance (lecture_id, student_id, present) values (${l.id}, ${st.id}, ${fd.has(`p_${st.id}`)})`;
+    const planId = int(fd, "plan_id");
+    if (planId) await tx`update schedule set lecture_id = ${l.id} where id = ${planId} and batch_id = ${batchId}`;
     return l.id as number;
   });
   revalidatePath("/", "layout");
-  redirect(withMsg(`/teach/lectures/${id}`, "ok", "Class saved. Absent students can now see the notes and homework."));
+  redirect(withMsg(`/teach/lectures/${id}`, "ok", "Class saved. Absent students can now see the notes and homework. You can give a task for this class below."));
 }
 
 async function lectureForEdit(id: number | null) {
@@ -90,6 +92,8 @@ export async function createExam(fd: FormData) {
       insert into exams (batch_id, subject_id, teacher_id, title, topic, held_on, max_marks)
       values (${batchId}, ${subjectId}, ${s.uid}, ${title}, ${str(fd, "topic")}, ${date}, ${max}) returning id`;
     for (const [sid, m] of marks) await tx`insert into exam_marks (exam_id, student_id, marks) values (${e.id}, ${sid}, ${m})`;
+    const planId = int(fd, "plan_id");
+    if (planId) await tx`update schedule set exam_id = ${e.id} where id = ${planId} and batch_id = ${batchId}`;
     return e.id as number;
   });
   revalidatePath("/", "layout");
