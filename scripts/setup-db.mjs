@@ -33,6 +33,19 @@ else {
   console.log("Schema updated.");
 }
 
+// A request that dies halfway through a query can leave its pooler connection waiting on the client forever, and the
+// database only has a few. Where pg_cron is available (Supabase), a job ends any such query after a minute.
+try {
+  await sql`create extension if not exists pg_cron`;
+  await sql`select cron.schedule('clear-stuck-queries', '* * * * *', ${`
+    select pg_terminate_backend(pid) from pg_stat_activity
+    where datname = current_database() and pid <> pg_backend_pid()
+      and state = 'active' and wait_event = 'ClientRead' and query_start < now() - interval '1 minute'`})`;
+  console.log("Stuck-query cleanup is scheduled.");
+} catch (e) {
+  console.log(`Stuck-query cleanup not scheduled: ${e.message}`);
+}
+
 const batches = ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10"];
 for (const [i, name] of batches.entries())
   await sql`insert into batches (name, sort) values (${name}, ${i}) on conflict (name) do nothing`;
