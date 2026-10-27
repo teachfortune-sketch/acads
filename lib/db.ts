@@ -9,6 +9,7 @@ const globalForSql = globalThis as unknown as { sql?: postgres.Sql };
 function databaseUrl() {
   const url = new URL(process.env.DATABASE_URL!);
   if (url.hostname.endsWith(".pooler.supabase.com") && url.port === "6543") url.port = "5432";
+  console.log(`Database: ${url.hostname}:${url.port || 5432}`);
   return url.toString();
 }
 

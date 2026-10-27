@@ -49,3 +49,21 @@ export function amount(fd: FormData, k: string) {
   const n = Number(str(fd, k).replace(/[,₹\s]/g, ""));
   return Number.isInteger(n) && n > 0 && n <= 10_000_000 ? n : null;
 }
+
+// Fails a slow step after `ms` and logs which step it was, so a stuck query shows up in the logs and as an error page
+// instead of the request hanging until the platform cuts it off.
+export function withDeadline<T>(label: string, p: Promise<T>, ms = 15000): Promise<T> {
+  const started = Date.now();
+  let timer: ReturnType<typeof setTimeout>;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      console.error(`[slow] ${label} still waiting after ${ms}ms`);
+      reject(new Error(`${label} timed out`));
+    }, ms);
+  });
+  return Promise.race([p, late]).finally(() => {
+    clearTimeout(timer);
+    const took = Date.now() - started;
+    if (took > 2000) console.warn(`[slow] ${label} took ${took}ms`);
+  });
+}

@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth";
 import { getStudent } from "@/lib/queries";
+import { withDeadline } from "@/lib/util";
 import { Shell } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
 import { Classes, Overview, Progress } from "@/components/StudentViews";
@@ -11,7 +12,7 @@ export default async function MePage({ searchParams }: { searchParams: Promise<R
   const s = await requireRole("student");
   const sp = await searchParams;
   const tab = sp.tab && sp.tab in TITLES ? sp.tab : null;
-  const st = await getStudent(s.uid);
+  const st = await withDeadline("student", getStudent(s.uid));
   if (!st) return <Shell s={s} active="/me"><p>Your student profile is not set up yet. Please tell Rahul.</p></Shell>;
   return (
     <Shell s={s} active={tab ? `/me?tab=${tab}` : "/me"}>
