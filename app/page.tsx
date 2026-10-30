@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { readSession } from "@/lib/auth";
+import { ENQUIRY_LEVELS } from "@/lib/enquiry";
 import { createEnquiry } from "./enquiry-actions";
 import "./landing.css";
 
 export const metadata: Metadata = {
   title: "Acads Coaching Institute, Saket Nagar, Varanasi | Classes 6 to 10",
   description:
-    "Coaching for Classes 6 to 10 in Maths, Science, Social Science, English and Hindi in Saket Nagar, Varanasi. Discover. Learn. Excel.",
+    "Coaching for Classes 6 to 10 in Maths, Science, Social Science, English and Hindi, plus CHS and KVS entrance preparation, in Saket Nagar, Varanasi. Discover. Learn. Excel.",
 };
 
 const NAV = [
@@ -21,6 +22,13 @@ const CLASSES = [
   { n: 8, text: "The bridge to higher classes: algebra, geometry and concept-first science." },
   { n: 9, text: "The full syllabus with regular tests and chapter-wise revision." },
   { n: 10, text: "Board year focus: complete syllabus, test practice and steady revision until the exam." },
+];
+
+const ENTRANCE = [
+  { key: "chs", name: "CHS", full: "Central Hindu School (BHU) entrance",
+    text: "Preparation for the CHS entrance test: Maths, reasoning, English, Hindi and general knowledge, with timed mock papers and past-paper practice." },
+  { key: "kvs", name: "KVS", full: "Kendriya Vidyalaya admission test",
+    text: "Preparation for the KVS admission test: Maths, English, Hindi and the core subjects, with regular practice tests and doubt sessions." },
 ];
 
 const STEPS = [
@@ -40,7 +48,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
   const sp = await searchParams;
   const session = await readSession();
   const login = session ? { href: "/app", label: "My dashboard" } : { href: "/login", label: "Student login" };
-  const pickedClass = ["6", "7", "8", "9", "10"].includes(sp.class ?? "") ? sp.class : "";
+  const pickedClass = ENQUIRY_LEVELS.some(([v]) => v === sp.class) ? sp.class : "";
   const campaign = (sp.src ?? "").replace(/[^a-z0-9-]/gi, "").slice(0, 40);
   const source = campaign || (pickedClass ? `class-${pickedClass}` : "website");
   const srcParam = campaign ? `&src=${campaign}` : "";
@@ -116,7 +124,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <div className="lp-head">
               <span className="lp-eyebrow">Classes</span>
               <h2>Five classes, one way of teaching</h2>
-              <p className="lp-lead">All five subjects for every class. Choose your child&apos;s class to ask about batches and timings.</p>
+              <p className="lp-lead">All five subjects for every class, plus entrance exam preparation. Choose your child&apos;s class to ask about batches and timings.</p>
             </div>
             <div className="lp-classes">
               {CLASSES.map((c) => (
@@ -124,6 +132,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
                   <div className="num">{c.n}<small>Class</small></div>
                   <p>{c.text}</p>
                   <a href={`/?class=${c.n}${srcParam}#admissions`}>Enquire for Class {c.n} →</a>
+                </div>
+              ))}
+            </div>
+            <h3 className="lp-subhead">Entrance exam preparation</h3>
+            <div className="lp-entrance">
+              {ENTRANCE.map((e) => (
+                <div className="lp-class" key={e.key}>
+                  <div className="num">{e.name}<small>{e.full}</small></div>
+                  <p>{e.text}</p>
+                  <a href={`/?class=${e.key}${srcParam}#admissions`}>Enquire for {e.name} preparation →</a>
                 </div>
               ))}
             </div>
@@ -208,7 +226,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
               <label>Class
                 <select id="class_level" name="class_level" defaultValue={pickedClass}>
                   <option value="">Choose…</option>
-                  {[6, 7, 8, 9, 10].map((n) => <option key={n} value={n}>Class {n}</option>)}
+                  {ENQUIRY_LEVELS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
                 </select>
               </label>
               <label className="full">Anything we should know? (optional)<textarea id="message" name="message" placeholder="Subjects your child needs help with, preferred timings" /></label>
@@ -226,7 +244,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
             <div className="lp-contact">
               <div><h3>Address</h3><span>Acads Coaching Institute, Saket Nagar, Varanasi, Uttar Pradesh</span>
                 <a href="https://www.google.com/maps/search/?api=1&query=Acads+Coaching+Institute+Saket+Nagar+Varanasi" target="_blank" rel="noopener noreferrer">Open in Google Maps</a></div>
-              <div><h3>Classes</h3><span>Classes 6, 7, 8, 9 and 10</span><span>Maths, Science, Social Science, English, Hindi</span></div>
+              <div><h3>Classes</h3><span>Classes 6, 7, 8, 9 and 10</span><span>CHS and KVS entrance preparation</span><span>Maths, Science, Social Science, English, Hindi</span></div>
               <div><h3>Admissions</h3><span>Use the form above and we will call you back.</span><a href="#admissions">Book a demo class</a></div>
             </div>
           </div>
