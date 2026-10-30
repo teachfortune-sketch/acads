@@ -38,6 +38,25 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tab{border:2px solid transparent;background:none;font:inherit;font-weight:700;font-size:.92rem;color:var(--ink);padding:5px 11px;border-radius:999px;cursor:pointer}
 .tab:hover{border-color:var(--ink)}
 .tab[aria-current="true"]{background:var(--pink);color:var(--on-accent);border-color:var(--ink);box-shadow:2px 2px 0 var(--ink)}
+/* Phone top bar: logo, the page you're on, and a Menu button that opens the tabs and account links */
+.top-menu{display:contents}
+.top-here,.menu-btn{display:none}
+.menu-btn{position:relative}
+.menu-btn .dot{position:absolute;top:-5px;right:-5px;width:12px;height:12px;border-radius:50%;background:var(--coral);border:1.5px solid var(--ink)}
+@media (max-width:760px){
+  .top .in{flex-wrap:nowrap;padding-block:8px;gap:10px}
+  .brand{font-size:1.1rem;gap:8px}
+  .brand img{width:30px;height:30px;padding:3px;border-radius:8px}
+  .top-here{display:block;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;font-size:.92rem;color:var(--muted);padding-left:10px;border-left:2px solid var(--rule)}
+  .menu-btn{display:inline-block;margin-left:auto;flex:none}
+  .top-menu{display:none}
+  .top-menu.open{display:block;position:absolute;left:0;right:0;top:100%;background:var(--card);border-bottom:3px solid var(--ink);box-shadow:0 6px 0 rgba(0,0,0,.12);max-height:calc(100dvh - 60px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain;
+    padding:12px max(16px,env(safe-area-inset-right,0px)) 16px max(16px,env(safe-area-inset-left,0px))}
+  .top-menu .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .top-menu .tab{padding:9px 12px;border-radius:10px;border-color:var(--rule)}
+  .top-menu .who{margin:14px 0 0;padding-top:12px;border-top:2px dashed var(--rule);justify-content:space-between}
+  .top-menu .who>span{flex-basis:100%}
+}
 
 /* Buttons */
 button,.btn{font:inherit;font-weight:700;border-radius:8px;border:2px solid var(--ink);background:var(--card);color:var(--ink);padding:8px 15px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);line-height:1.3}
