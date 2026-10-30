@@ -26,6 +26,10 @@ Built with Next.js and Postgres (hosted on Vercel and Supabase).
    Click *Deploy*. Each deploy runs `npm run vercel-build`, which creates the tables, the Class 6–10 batches, the subjects and your admin login before building. It is safe to run again: it never changes data that is already there, and the admin password is only used the first time.
 3. Open the link Vercel gives you (like `acads.vercel.app`), sign in as `rahul`, open **Logins** and add your teachers, students and parents.
 
+## Backups
+
+The database is copied every night, encrypted, and kept for 90 days. Setup and restore steps are in [docs/backups.md](docs/backups.md).
+
 ## Run it on your computer
 
 ```bash
