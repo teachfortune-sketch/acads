@@ -108,7 +108,7 @@ export async function QuestHome({ st, viewer }: { st: StudentInfo; viewer: "stud
               <div className="muted small">{label}</div>
               <div className="big num">{n} <span className="small">day{n === 1 ? "" : "s"}</span></div>
               <div className="small">{step ? <>{step - n} more for the {step}-day bonus (+{rules[`streak_${step}` as "streak_5"]})</> : "Longest bonus reached!"}</div>
-              <div className="muted small">{what}</div>
+              <div className="muted small what">{what}</div>
             </div>
           );
         })}
@@ -138,7 +138,7 @@ export async function QuestHome({ st, viewer }: { st: StudentInfo; viewer: "stud
             <div key={b.key} className={`badge${b.earned ? "" : " locked"}`}>
               <span className="seal" style={b.earned ? { background: b.color } : undefined}>{b.seal}</span>
               <b>{b.name}</b>
-              <span className="small muted">{b.desc}</span>
+              <span className="small muted desc">{b.desc}</span>
               {!b.earned && <span className="prog" role="img" aria-label={`${b.have} of ${b.need}`}><span style={{ width: `${(b.have / b.need) * 100}%` }} /></span>}
               <span className="small num">{b.earned ? "Unlocked" : `${b.have} / ${b.need}`}</span>
             </div>
@@ -170,24 +170,34 @@ export async function QuestHome({ st, viewer }: { st: StudentInfo; viewer: "stud
   );
 }
 
+// The newest few show straight away; older ones fold away so the list doesn't run the length of a phone screen.
+const FEED_FIRST = 8;
+
 export function Feed({ feed, reverse }: { feed: FeedRow[]; reverse?: (f: FeedRow) => React.ReactNode }) {
+  const row = (f: FeedRow) => (
+    <li key={f.id} className={f.reversed ? "struck" : ""}>
+      <span className={`xp num ${f.xp > 0 ? "pos" : f.xp < 0 ? "neg" : ""}`}>{signed(f.xp)}</span>
+      <div style={{ flex: 1 }}>
+        <div><span className={`chip ${pillarOf(f.pillar).chip}`}>{pillarOf(f.pillar).label}</span> {f.reason}{f.reversed ? " (reversed)" : ""}</div>
+        {f.note && <div className="small">“{f.note}”</div>}
+        <div className="muted small">{f.staff ?? "Acads"} · {fmtDate(f.day)} · {new Date(f.created_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })}</div>
+      </div>
+      {reverse && !f.reversed && !f.is_reversal && reverse(f)}
+    </li>
+  );
   return (
     <div className="panel" id="points">
       <h2>Every point change</h2>
       {feed.length ? (
-        <ul className="list feed">
-          {feed.map((f) => (
-            <li key={f.id} className={f.reversed ? "struck" : ""}>
-              <span className={`xp num ${f.xp > 0 ? "pos" : f.xp < 0 ? "neg" : ""}`}>{signed(f.xp)}</span>
-              <div style={{ flex: 1 }}>
-                <div><span className={`chip ${pillarOf(f.pillar).chip}`}>{pillarOf(f.pillar).label}</span> {f.reason}{f.reversed ? " (reversed)" : ""}</div>
-                {f.note && <div className="small">“{f.note}”</div>}
-                <div className="muted small">{f.staff ?? "Acads"} · {fmtDate(f.day)} · {new Date(f.created_at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" })}</div>
-              </div>
-              {reverse && !f.reversed && !f.is_reversal && reverse(f)}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="list feed">{feed.slice(0, FEED_FIRST).map(row)}</ul>
+          {feed.length > FEED_FIRST && (
+            <details className="more">
+              <summary>Show {feed.length - FEED_FIRST} older</summary>
+              <ul className="list feed">{feed.slice(FEED_FIRST).map(row)}</ul>
+            </details>
+          )}
+        </>
       ) : <p className="muted">No points yet. They appear here as teachers and reception record them.</p>}
     </div>
   );

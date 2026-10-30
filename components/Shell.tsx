@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Session } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { TopNav } from "@/components/TopNav";
 
 const TABS: Record<Session["role"], [string, string][]> = {
   admin: [["/admin", "Students"], ["/admin/approvals", "Approvals"], ["/class", "Class mode"], ["/desk", "Desk"], ["/board", "Leaderboard"], ["/syllabus", "Syllabus"], ["/admin/reports", "Reports"], ["/admin/summaries", "Parent summary"], ["/admin/display", "TV display"],
@@ -13,13 +14,11 @@ const TABS: Record<Session["role"], [string, string][]> = {
   parent: [["/parent", "Points"], ["/board", "Leaderboard"], ["/syllabus", "Syllabus"], ["/parent?tab=overview", "Overview"], ["/parent?tab=progress", "Progress"], ["/parent?tab=classes", "Classes"], ["/parent?tab=fees", "Fees"]],
 };
 
-// child keeps a parent's chosen child selected when they switch tabs.
 export async function Shell({ s, active, child, children }: { s: Session; active: string; child?: number; children: React.ReactNode }) {
   // The admin sees how many sign-ups and password requests are waiting.
   const [waiting] = s.role === "admin"
     ? await sql`select (select count(*) from users where status = 'pending') + (select count(*) from reset_requests where handled_at is null) as n`
     : [{ n: 0 }];
-  const withChild = (href: string) => (child ? `${href}${href.includes("?") ? "&" : "?"}child=${child}` : href);
   return (
     <>
       <header className="top">
@@ -27,23 +26,7 @@ export async function Shell({ s, active, child, children }: { s: Session; active
           <Link href="/app" className="brand" style={{ textDecoration: "none" }}>
             <img src="/acads-mark.svg" alt="" width={36} height={36} />Acads
           </Link>
-          <nav className="tabs">
-            {TABS[s.role].map(([href, label]) => (
-              <Link key={href} href={withChild(href)} className="tab" aria-current={active === href}>
-                {label}
-                {href === "/admin/approvals" && Number(waiting.n) > 0 && <span className="count num">{waiting.n}</span>}
-              </Link>
-            ))}
-          </nav>
-          <div className="who">
-            <span>
-              {s.name} · <span className="chip c-info">{s.role}</span>
-            </span>
-            <Link href="/password" className="small">Password</Link>
-            <form action="/logout" method="post">
-              <button className="small" type="submit">Sign out</button>
-            </form>
-          </div>
+          <TopNav tabs={TABS[s.role]} active={active} child={child} name={s.name} role={s.role} waiting={Number(waiting.n)} />
         </div>
       </header>
       <main className="wrap">
