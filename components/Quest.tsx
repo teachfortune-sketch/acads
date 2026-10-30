@@ -6,7 +6,7 @@ import {
   studentBadges, studentFeed,
 } from "@/lib/points";
 import { classSyllabus } from "@/lib/syllabus";
-import { fmtDate, todayIST } from "@/lib/util";
+import { fmtDate, todayIST, withDeadline } from "@/lib/util";
 import { AutoRefresh } from "./AutoRefresh";
 
 const pillarOf = (k: Pillar) => PILLARS.find((p) => p.key === k)!;
@@ -40,15 +40,17 @@ export function PillarLegend() {
 export async function QuestHome({ st, viewer }: { st: StudentInfo; viewer: "student" | "parent" | "staff" }) {
   const today = todayIST();
   const [board, feed, pillars, hwStreak, attStreak, rtStreak, rules, syllabus, quests] = await Promise.all([
-    batchBoard(st.batch_id), studentFeed(st.id, 30), pillarTotals(st.id), homeworkStreak(sql, st.id), attendanceStreak(sql, st.id), routineStreak(sql, st.id), getRules(),
-    classSyllabus(st.batch_id, st.batch),
-    sql`select q.*, q.due_on::text as due, sub.name as subject, u.name as poster, c.done, c.stars
+    withDeadline("board", batchBoard(st.batch_id)), withDeadline("feed", studentFeed(st.id, 30)), withDeadline("pillars", pillarTotals(st.id)),
+    withDeadline("hw streak", homeworkStreak(sql, st.id)), withDeadline("attendance streak", attendanceStreak(sql, st.id)),
+    withDeadline("routine streak", routineStreak(sql, st.id)), withDeadline("rules", getRules()),
+    withDeadline("syllabus", classSyllabus(st.batch_id, st.batch)),
+    withDeadline("quests", sql`select q.*, q.due_on::text as due, sub.name as subject, u.name as poster, c.done, c.stars
       from quests q join subjects sub on sub.id = q.subject_id join users u on u.id = q.posted_by
       left join quest_checks c on c.quest_id = q.id and c.student_id = ${st.id}
-      where q.batch_id = ${st.batch_id} and q.due_on >= ${today} order by q.due_on limit 3`,
+      where q.batch_id = ${st.batch_id} and q.due_on >= ${today} order by q.due_on limit 3`.then((r) => r)),
   ]);
   const me = board.find((r) => r.id === st.id);
-  const badges = await studentBadges(st.id, me?.earned ?? 0);
+  const badges = await withDeadline("badges", studentBadges(st.id, me?.earned ?? 0));
   const subjects = [...new Map(syllabus.map((c) => [c.subject_id, c.subject])).entries()].map(([id, name]) => {
     const all = syllabus.filter((c) => c.subject_id === id);
     return { id, name, total: all.length, taught: all.filter((c) => c.taught).length };
