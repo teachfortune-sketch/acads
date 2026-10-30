@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sql } from "@/lib/db";
 import { str } from "@/lib/util";
+import { ENQUIRY_LEVELS } from "@/lib/enquiry";
 
 const back = (key: "ok" | "err", text: string) => `/?${key}=${encodeURIComponent(text)}#admissions`;
 
@@ -13,7 +14,7 @@ export async function createEnquiry(fd: FormData) {
   const phone = str(fd, "phone").replace(/[\s-]/g, "").replace(/^(\+91|0)/, "");
   if (!guardian) redirect(back("err", "Please enter your name."));
   if (!/^[6-9]\d{9}$/.test(phone)) redirect(back("err", "Please enter a 10-digit mobile number."));
-  const level = ["6", "7", "8", "9", "10"].includes(str(fd, "class_level")) ? `Class ${str(fd, "class_level")}` : "";
+  const level = ENQUIRY_LEVELS.find(([v]) => v === str(fd, "class_level"))?.[1] ?? "";
   // The same number again within a day is treated as a repeat, not a new enquiry.
   const [dup] = await sql`select id from enquiries where phone = ${phone} and created_at > now() - interval '1 day'`;
   if (!dup)
